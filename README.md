@@ -99,7 +99,7 @@ IncidentOps Skeleton integrates lightweight governance principles:
 
 **Reema Raghava**
 *AI + BI + Ops Systems Architect*
-LinkedIn: 
-GitHub: 
+LinkedIn: https://www.linkedin.com/in/reema-raghava-28737a11/
+GitHub: https://github.com/reema14a
 ---
 
