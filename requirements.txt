@@ -1,6 +1,7 @@
 # Core
 python-dotenv
 pyyaml
+pytest
 requests
 
 # Optional for later visualization or UI
