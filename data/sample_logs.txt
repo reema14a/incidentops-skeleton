@@ -1,2 +1,6 @@
 2025-11-10 10:01:03 ERROR Database connection timeout
 2025-11-10 10:02:47 WARNING Memory threshold exceeded
+2025-11-10 10:05:12 INFO System startup complete
+2025-11-10 10:07:33 ERROR Failed to write to disk: /var/log/app.log
+2025-11-10 10:09:15 WARNING CPU usage at 85%
+2025-11-10 10:12:01 INFO Request processed successfully
