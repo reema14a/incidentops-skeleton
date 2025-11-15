@@ -12,7 +12,9 @@ inclusion: always
 ├── data/             # Sample data and output logs
 ├── hooks/            # MCP integration hooks
 ├── orchestrator/     # Pipeline orchestration logic
-├── tests/            # Unit tests for agents, hooks, orchestrator
+├── tests/            
+    └── unit/         # Pure unit tests for individual agents
+    └── integration/  # Multi-agent flows and full pipeline tests 
 └── ui/               # User interface (console client)
 ```
 
@@ -56,9 +58,13 @@ Hooks in `hooks/` directory provide external integrations:
 ## Tests Directory
 
 ```
-tests/             # Unit tests for agents, hooks, orchestrator
+tests/             # Unit and integration tests for agents, hooks, orchestrator
 ```
-
-Kiro should place all permanent test files here.  
-Temporary validation tests created during task execution should be retained as real tests under this directory.
+Rules: 
+- Kiro should place all permanent test files here.  
+- Temporary validation tests created during task execution should be retained as real tests under this directory.
+- Kiro must generate unit tests inside tests/unit/.
+- Kiro must generate integration tests inside tests/integration/.
+- Unit tests must not perform file I/O or run the pipeline.
+- Integration tests may exercise pipeline execution or multi-agent flows.
 

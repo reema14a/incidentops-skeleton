@@ -88,7 +88,23 @@ python3 -m ui.console_client
 Kiro must ensure all imports remain valid after modifications.
 
 ---
+## Testing Standards
 
-# Test File Retention
-When Kiro generates temporary test files during task execution, they should be preserved as permanent unit tests and placed in the `tests/` directory.  
-If a test file validates an agent’s behavior, Kiro should convert it into a stable test file rather than deleting it.
+### Unit Tests
+- Must mock OpenAIClient.generate() for any AI agent.
+- Must validate agent behavior in isolation.
+- Must be placed under tests/unit/.
+- Must not perform disk I/O or execute the whole pipeline.
+
+### Integration Tests
+- Must validate multi-agent flows or the entire pipeline.
+- Should use deterministic mock responses for LLM behavior.
+- Must be placed under tests/integration/.
+
+### Naming Conventions
+- Unit test filenames: test_<agent>.py
+- Integration test filenames: test_<flow>.py or test_<pipeline>.py
+
+### Test File Retention
+- When Kiro generates temporary test files during task execution, they should be preserved as permanent unit tests and placed in the `tests/` directory.  
+- If a test file validates an agent’s behavior, Kiro should convert it into a stable test file rather than deleting it.
