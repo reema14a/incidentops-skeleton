@@ -1,44 +1,98 @@
 ---
-name: IncidentOps System
-status: draft
-description: Multi-agent AIOps pipeline for monitoring, triage, resolution, and governance
+name: "IncidentOps AIOps Pipeline"
+status: "draft"
+description: "Specification for the multi-agent IncidentOps system supporting log monitoring, incident classification, resolution suggestion, and audit logging."
 ---
 
-# Requirements
+# Overview
+IncidentOps is a sequential multi-agent pipeline for AIOps-style incident handling.  
+The system reads logs, identifies anomalies, classifies severity, suggests potential remediations, and logs all actions for audit and governance.
 
-## Overview
-This project implements an AI-assisted AIOps workflow using multiple Python agents orchestrated sequentially:
-Monitor → Triage → Resolution → OpsLog
+The pipeline stages:
+1. **MonitorAgent** – Detect anomalies in log or metric data.
+2. **TriageAgent** – Classify severity and incident category.
+3. **ResolutionAgent** – Propose remediation steps.
+4. **OpsLogAgent** – Persist results and decisions.
 
-The system reads logs, classifies incidents, generates resolution plans, and maintains audit logs.
+This spec defines functional behavior and tasks needed to implement the system.
 
-## Components
+---
 
-### Agents
-| Agent | Purpose |
-|-------|---------|
-| MonitorAgent | Scans logs/metrics and outputs alert events |
-| TriageAgent | Classifies alerts by severity and category |
-| ResolutionAgent | Generates remediation recommendations |
-| OpsLogAgent | Logs final output, governance tracking |
+# Functional Requirements
 
-# Design
+## Monitor Stage
+- Parse log/metric input.
+- Identify error-level patterns or anomalies.
+- Output a list of `alert_events`.
 
-## Architecture
-- Python-based agent modules in `/agents/`
-- Orchestrator pipeline in `/orchestrator/`
-- Optional hooks in `/hooks/`
-- Configuration-driven via `/config/`
-- UI entry point via `ui/console_client.py`
+## Triage Stage
+- Accept `alert_events`.
+- Determine:
+  - severity level (Critical, High, Medium, Low)
+  - category (Performance, Network, Storage, Application)
+- Output: `incident_priority`, `category`.
 
-# Implementation
+## Resolution Stage
+- Accept triage results.
+- Use mapping rules or heuristics to suggest remediation steps.
+- Output: `resolution_plan`.
 
-## Tasks
-- [x] Implement MonitorAgent (Python)
-- [x] Implement TriageAgent
-- [ ] Implement ResolutionAgent
-- [ ] Implement OpsLogAgent
-- [ ] Build orchestrator pipeline
-- [ ] Add audit logging
-- [ ] Integrate hooks
-- [ ] Add Gradio UI
+## Logging Stage
+- Accept resolution plan.
+- Generate structured audit entry:
+  - timestamp
+  - stage outputs
+  - agent execution order
+  - summary of recommendations
+
+---
+
+# Data Flow
+```
+logs → MonitorAgent → alert_events
+alert_events → TriageAgent → incident_priority, category
+incident_priority + category → ResolutionAgent → resolution_plan
+resolution_plan → OpsLogAgent → log_entry
+```
+
+---
+
+# Tasks
+
+## Agent Implementation Tasks
+- [x] Implement **MonitorAgent.run()** to parse logs and detect anomalies.
+- [x] Implement **TriageAgent.run()** for severity & category classification.
+- [x] Implement **ResolutionAgent.run()** to propose remediation actions.
+- [x] Implement **OpsLogAgent.run()** to generate audit log entry.
+
+## Orchestrator Tasks
+- [x] Ensure strict sequential data flow across agents.
+- [x] Add top-level logging to show each stage execution.
+
+## Hook Integration Tasks (Optional Enhancements)
+- [ ] Integrate metrics parsing using `metrics_hook`.
+- [ ] Integrate external alerting via `alert_api_hook`.
+- [ ] Integrate incident ticketing through `jira_hook`.
+
+## Testing & Execution Tasks
+- [ ] Ensure entire pipeline executes using:
+  ```
+  python3 -m ui.console_client
+  ```
+- [ ] Add minimal sample logs in `data/sample_logs.txt`.
+
+---
+
+# Acceptance Criteria
+- Pipeline runs end-to-end without error.
+- Each agent logs its activity using `self.log()`.
+- Orchestrator prints a final combined result.
+- Audit log entry is well-structured and repeatable.
+- Hooks can be plugged in without modifying agent internals.
+
+---
+
+# Notes for Kiro
+- Follow steering rules defined in `.kiro/steering/`.
+- Use incremental edits when adding or modifying code.
+- Maintain absolute import paths.

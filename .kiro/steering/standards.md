@@ -88,3 +88,7 @@ python3 -m ui.console_client
 Kiro must ensure all imports remain valid after modifications.
 
 ---
+
+# Test File Retention
+When Kiro generates temporary test files during task execution, they should be preserved as permanent unit tests and placed in the `tests/` directory.  
+If a test file validates an agent’s behavior, Kiro should convert it into a stable test file rather than deleting it.
