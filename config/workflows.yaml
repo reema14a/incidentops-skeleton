@@ -1,0 +1,7 @@
+pipeline:
+  name: "incident_detection"
+  sequence:
+    - MonitorAgent
+    - TriageAgent
+    - ResolutionAgent
+    - OpsLogAgent

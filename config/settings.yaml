@@ -1,0 +1,7 @@
+runtime:
+  log_level: INFO
+  enable_hooks: true
+  save_output: true
+paths:
+  data_dir: "data/"
+  output_log: "data/output_log.json"

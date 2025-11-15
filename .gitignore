@@ -4,3 +4,12 @@ __pycache__/
 *.pyc
 demo/
 .env
+
+.venv/
+data/output_log.json
+
+.kiro/cache/
+.kiro/tmp/
+.kiro/history/
+.DS_Store
+.vscode/settings.json

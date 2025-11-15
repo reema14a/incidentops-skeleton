@@ -1,0 +1,7 @@
+# Core
+python-dotenv
+pyyaml
+requests
+
+# Optional for later visualization or UI
+gradio

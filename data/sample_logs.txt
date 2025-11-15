@@ -1,0 +1,2 @@
+2025-11-10 10:01:03 ERROR Database connection timeout
+2025-11-10 10:02:47 WARNING Memory threshold exceeded
