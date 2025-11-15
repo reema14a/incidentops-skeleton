@@ -108,3 +108,29 @@ Kiro must ensure all imports remain valid after modifications.
 ### Test File Retention
 - When Kiro generates temporary test files during task execution, they should be preserved as permanent unit tests and placed in the `tests/` directory.  
 - If a test file validates an agent’s behavior, Kiro should convert it into a stable test file rather than deleting it.
+
+## LLM Agent Standards
+
+All LLM-driven agents must follow these patterns:
+
+### JSON Parsing
+- All agents must use the shared JSON extraction helper:
+  from utils.json_parser import extract_json_block
+- Direct json.loads() inside agents should not be used.
+- Each agent must include a private method:
+  _parse_llm_response()
+  which uses extract_json_block() for structured output.
+
+### Fallback Behavior
+If the response cannot be parsed as JSON:
+- Log a warning
+- Return a summary based on the first 200 characters of raw text
+- categories → []
+- severity_breakdown → {}
+- root_causes → []
+- (or equivalent fields depending on the agent)
+
+### Method & Structure Conventions
+- Agent logic must remain deterministic and stateless.
+- Logging should use self.log().
+- All LLM agents must call the OpenAIClient.generate() method.

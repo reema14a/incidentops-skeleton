@@ -15,7 +15,9 @@ inclusion: always
 ├── tests/            
     └── unit/         # Pure unit tests for individual agents
     └── integration/  # Multi-agent flows and full pipeline tests 
-└── ui/               # User interface (console client)
+├── ui/               # User interface (console client)
+└── util/             # Shared utilities
+
 ```
 
 ## Agent Architecture
@@ -68,3 +70,9 @@ Rules:
 - Unit tests must not perform file I/O or run the pipeline.
 - Integration tests may exercise pipeline execution or multi-agent flows.
 
+## Shared Utilities
+
+- JSON extraction helper
+```
+utils/json_parser.py
+```

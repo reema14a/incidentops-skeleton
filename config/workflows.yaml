@@ -2,6 +2,7 @@ pipeline:
   name: "incident_detection"
   sequence:
     - MonitorAgent
+    - LLMAlertSummaryAgent
     - TriageAgent
     - ResolutionAgent
     - OpsLogAgent

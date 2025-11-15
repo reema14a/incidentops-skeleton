@@ -3,18 +3,24 @@ Orchestrator module for IncidentOps pipeline execution.
 
 This module ensures strict sequential data flow across all agents:
 1. MonitorAgent → alerts (list of dicts with timestamp, level, message)
-2. TriageAgent → triaged alerts (adds severity, category)
-3. ResolutionAgent → resolution plans (adds recommended_actions)
-4. OpsLogAgent → audit summary (dict with status, count, timestamp)
+2. LLMAlertSummaryAgent → enriched alerts with LLM summary
+3. TriageAgent → triaged alerts (adds severity, category)
+4. ResolutionAgent → resolution plans (adds recommended_actions)
+5. LLMResolutionAgent → enriched resolution plans with LLM summary
+6. OpsLogAgent → audit summary (dict with status, count, timestamp)
+7. LLMGovernanceAgent → governance analysis (risk scoring, escalation, compliance)
 
 Each stage validates input/output data structures to prevent invalid data flow.
 Pipeline execution stops immediately if any validation fails.
 """
 from typing import Any, List, Dict
 from agents.monitor_agent import MonitorAgent
+from agents.llm_alert_summary_agent import LLMAlertSummaryAgent
 from agents.triage_agent import TriageAgent
 from agents.resolution_agent import ResolutionAgent
+from agents.llm_resolution_agent import LLMResolutionAgent
 from agents.opslog_agent import OpsLogAgent
+from agents.llm_governance_agent import LLMGovernanceAgent
 
 
 class PipelineExecutor:
@@ -27,9 +33,12 @@ class PipelineExecutor:
         """Initialize pipeline executor with agent instances."""
         self.agents = {
             'monitor': MonitorAgent("MonitorAgent"),
+            'llm_summary': LLMAlertSummaryAgent("LLMAlertSummaryAgent"),
             'triage': TriageAgent("TriageAgent"),
             'resolution': ResolutionAgent("ResolutionAgent"),
-            'opslog': OpsLogAgent("OpsLogAgent")
+            'llm_resolution': LLMResolutionAgent("LLMResolutionAgent"),
+            'opslog': OpsLogAgent("OpsLogAgent"),
+            'governance': LLMGovernanceAgent("LLMGovernanceAgent")
         }
         self.execution_log = []
     
@@ -82,6 +91,35 @@ class PipelineExecutor:
             missing_fields = [field for field in required_fields if field not in alert]
             if missing_fields:
                 raise ValueError(f"Alert {idx} missing required fields: {missing_fields}")
+        
+        return data
+    
+    def _validate_llm_summary_output(self, data: Any) -> Dict:
+        """
+        Validate LLMAlertSummaryAgent output structure.
+        
+        Args:
+            data: Output from LLMAlertSummaryAgent
+            
+        Returns:
+            Dict: Validated output with alerts and llm_summary
+            
+        Raises:
+            ValueError: If data structure is invalid
+        """
+        if not isinstance(data, dict):
+            raise ValueError(f"LLMAlertSummaryAgent must return a dict, got {type(data).__name__}")
+        
+        required_fields = ['alerts', 'llm_summary']
+        missing_fields = [field for field in required_fields if field not in data]
+        if missing_fields:
+            raise ValueError(f"LLMAlertSummaryAgent output missing required fields: {missing_fields}")
+        
+        if not isinstance(data['alerts'], list):
+            raise ValueError(f"LLMAlertSummaryAgent 'alerts' must be a list, got {type(data['alerts']).__name__}")
+        
+        if not isinstance(data['llm_summary'], dict):
+            raise ValueError(f"LLMAlertSummaryAgent 'llm_summary' must be a dict, got {type(data['llm_summary']).__name__}")
         
         return data
     
@@ -142,6 +180,35 @@ class PipelineExecutor:
         
         return data
     
+    def _validate_llm_resolution_output(self, data: Any) -> Dict:
+        """
+        Validate LLMResolutionAgent output structure.
+        
+        Args:
+            data: Output from LLMResolutionAgent
+            
+        Returns:
+            Dict: Validated output with resolution_plans and llm_resolution_summary
+            
+        Raises:
+            ValueError: If data structure is invalid
+        """
+        if not isinstance(data, dict):
+            raise ValueError(f"LLMResolutionAgent must return a dict, got {type(data).__name__}")
+        
+        required_fields = ['resolution_plans', 'llm_resolution_summary']
+        missing_fields = [field for field in required_fields if field not in data]
+        if missing_fields:
+            raise ValueError(f"LLMResolutionAgent output missing required fields: {missing_fields}")
+        
+        if not isinstance(data['resolution_plans'], list):
+            raise ValueError(f"LLMResolutionAgent 'resolution_plans' must be a list, got {type(data['resolution_plans']).__name__}")
+        
+        if not isinstance(data['llm_resolution_summary'], dict):
+            raise ValueError(f"LLMResolutionAgent 'llm_resolution_summary' must be a dict, got {type(data['llm_resolution_summary']).__name__}")
+        
+        return data
+    
     def _validate_opslog_output(self, data: Any) -> Dict:
         """
         Validate OpsLogAgent output structure.
@@ -165,6 +232,39 @@ class PipelineExecutor:
         
         return data
     
+    def _validate_governance_output(self, data: Any) -> Dict:
+        """
+        Validate LLMGovernanceAgent output structure.
+        
+        Args:
+            data: Output from LLMGovernanceAgent
+            
+        Returns:
+            Dict: Validated output with audit_summary and governance_analysis
+            
+        Raises:
+            ValueError: If data structure is invalid
+        """
+        if not isinstance(data, dict):
+            raise ValueError(f"LLMGovernanceAgent must return a dict, got {type(data).__name__}")
+        
+        required_fields = ['audit_summary', 'governance_analysis']
+        missing_fields = [field for field in required_fields if field not in data]
+        if missing_fields:
+            raise ValueError(f"LLMGovernanceAgent output missing required fields: {missing_fields}")
+        
+        if not isinstance(data['governance_analysis'], dict):
+            raise ValueError(f"LLMGovernanceAgent 'governance_analysis' must be a dict, got {type(data['governance_analysis']).__name__}")
+        
+        # Validate governance_analysis structure
+        analysis = data['governance_analysis']
+        required_analysis_fields = ['risk', 'escalation', 'compliance_issues', 'commentary']
+        missing_analysis_fields = [field for field in required_analysis_fields if field not in analysis]
+        if missing_analysis_fields:
+            raise ValueError(f"Governance analysis missing required fields: {missing_analysis_fields}")
+        
+        return data
+    
     def run(self) -> Dict:
         """
         Execute the complete pipeline with strict sequential data flow.
@@ -182,31 +282,54 @@ class PipelineExecutor:
             alerts = self._validate_monitor_output(alerts)
             self._log_stage('MonitorAgent', 'completed', len(alerts))
             
-            # Stage 2: Triage (depends on Monitor output)
+            # Stage 2: LLM Alert Summary (depends on Monitor output)
+            self._log_stage('LLMAlertSummaryAgent', 'started')
+            llm_output = self.agents['llm_summary'].run(alerts)
+            llm_output = self._validate_llm_summary_output(llm_output)
+            self._log_stage('LLMAlertSummaryAgent', 'completed', len(llm_output['alerts']))
+            
+            # Stage 3: Triage (depends on LLM Summary output - extract alerts)
             self._log_stage('TriageAgent', 'started')
-            triaged = self.agents['triage'].run(alerts)
+            triaged = self.agents['triage'].run(llm_output['alerts'])
             triaged = self._validate_triage_output(triaged)
             self._log_stage('TriageAgent', 'completed', len(triaged))
             
-            # Stage 3: Resolution (depends on Triage output)
+            # Stage 4: Resolution (depends on Triage output)
             self._log_stage('ResolutionAgent', 'started')
             plans = self.agents['resolution'].run(triaged)
             plans = self._validate_resolution_output(plans)
             self._log_stage('ResolutionAgent', 'completed', len(plans))
             
-            # Stage 4: OpsLog (depends on Resolution output)
+            # Stage 5: LLM Resolution (depends on Resolution output)
+            self._log_stage('LLMResolutionAgent', 'started')
+            llm_resolution_output = self.agents['llm_resolution'].run(plans)
+            llm_resolution_output = self._validate_llm_resolution_output(llm_resolution_output)
+            self._log_stage('LLMResolutionAgent', 'completed', len(llm_resolution_output['resolution_plans']))
+            
+            # Stage 6: OpsLog (depends on LLM Resolution output - extract resolution_plans)
             self._log_stage('OpsLogAgent', 'started')
-            summary = self.agents['opslog'].run(plans)
+            summary = self.agents['opslog'].run(llm_resolution_output['resolution_plans'])
             summary = self._validate_opslog_output(summary)
             self._log_stage('OpsLogAgent', 'completed', summary.get('count', 0))
+            
+            # Stage 7: Governance (depends on OpsLog output)
+            self._log_stage('LLMGovernanceAgent', 'started')
+            governance_output = self.agents['governance'].run(summary)
+            governance_output = self._validate_governance_output(governance_output)
+            self._log_stage('LLMGovernanceAgent', 'completed', 1)
             
             # Pipeline complete
             print(f"\n{'='*60}")
             print(f"✅ Pipeline completed successfully")
             print(f"{'='*60}")
-            print(f"Summary: {summary}")
+            print(f"Audit Summary: {summary}")
+            print(f"Governance Analysis:")
+            print(f"  Risk Level: {governance_output['governance_analysis']['risk']}")
+            print(f"  Escalation: {governance_output['governance_analysis']['escalation']}")
+            if governance_output['governance_analysis']['compliance_issues']:
+                print(f"  Compliance Issues: {governance_output['governance_analysis']['compliance_issues']}")
             
-            return summary
+            return governance_output
             
         except ValueError as e:
             print(f"\n❌ Pipeline failed: Data validation error")

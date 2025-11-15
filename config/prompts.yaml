@@ -1,0 +1,30 @@
+alert_summary_prompt: |
+  You are an AI alert summarizer. Analyze the following alerts (JSON list):
+  {alerts}
+
+  Provide a JSON object with:
+  - summary: short natural language summary
+  - categories: list of top categories
+  - severity_breakdown: mapping of severity->count
+  - root_causes: list of likely root causes
+
+resolution_prompt: |
+  You are an AI incident resolution assistant. Given this list of remediation
+  actions (JSON):
+  {actions}
+
+  Provide a JSON object with:
+  - summary: short readable summary for on-call
+  - recommendations: list of grouped recommended steps
+  - escalation: suggested escalation paths
+  - affected_systems: list
+
+governance_prompt: |
+  You are an AI governance and compliance auditor. Analyze the following final log summary (JSON):
+  {log}
+
+  Provide a JSON object with:
+  - risk: one of [low, medium, high, critical]
+  - escalation: recommended escalation action
+  - compliance_issues: list (if any)
+  - commentary: short audit commentary

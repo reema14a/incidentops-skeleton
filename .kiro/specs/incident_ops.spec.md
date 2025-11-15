@@ -69,6 +69,25 @@ resolution_plan → OpsLogAgent → log_entry
 - [x] Ensure strict sequential data flow across agents.
 - [x] Add top-level logging to show each stage execution.
 
+## AI Agent Enhancements
+
+### AI Agent Implementation
+- [x] Implement **LLMAlertSummaryAgent** to summarize alert events after MonitorAgent.
+- [x] Implement **LLMResolutionAgent** to generate human-friendly remediation summaries after ResolutionAgent.
+- [x] Implement **LLMGovernanceAgent** to perform risk scoring, escalation checks, and compliance analysis after OpsLogAgent.
+
+### Orchestrator Integration for AI Agents
+- [x] Insert **LLMAlertSummaryAgent** into the pipeline between MonitorAgent and TriageAgent.
+- [x] Insert **LLMResolutionAgent** into the pipeline between ResolutionAgent and OpsLogAgent.
+- [ ] Append **LLMGovernanceAgent** as the final agent in the pipeline.
+
+### AI Testing
+- [ ] Update or generate unit tests for all three AI agents (OpenAIClient is mocked).
+- [ ] Update the full pipeline integration test to validate the AI-enhanced pipeline.
+
+### Optional Enhancements
+- [ ] Add a small LangGraph-style node simulation inside LLMGovernanceAgent to demonstrate compatibility.
+
 ## Hook Integration Tasks (Optional Enhancements)
 - [ ] Integrate metrics parsing using `metrics_hook`.
 - [ ] Integrate external alerting via `alert_api_hook`.
@@ -96,3 +115,5 @@ resolution_plan → OpsLogAgent → log_entry
 - Follow steering rules defined in `.kiro/steering/`.
 - Use incremental edits when adding or modifying code.
 - Maintain absolute import paths.
+
+---

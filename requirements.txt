@@ -3,6 +3,7 @@ python-dotenv
 pyyaml
 pytest
 requests
+openai
 
 # Optional for later visualization or UI
 gradio

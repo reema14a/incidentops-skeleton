@@ -41,6 +41,52 @@ class TestPipelineExecutor(unittest.TestCase):
             self.executor._validate_monitor_output(invalid_alerts)
         self.assertIn("missing required fields", str(context.exception))
     
+    def test_validate_llm_summary_output_valid(self):
+        """Test that valid LLM summary output passes validation."""
+        valid_output = {
+            'alerts': [
+                {
+                    'timestamp': '2025-11-15 10:00:00',
+                    'level': 'ERROR',
+                    'message': 'Database connection failed'
+                }
+            ],
+            'llm_summary': {
+                'summary': 'Test summary',
+                'categories': ['Database'],
+                'severity_breakdown': {'ERROR': 1},
+                'root_causes': ['Connection issue']
+            }
+        }
+        result = self.executor._validate_llm_summary_output(valid_output)
+        self.assertEqual(result, valid_output)
+    
+    def test_validate_llm_summary_output_invalid_type(self):
+        """Test that invalid LLM summary output type raises ValueError."""
+        with self.assertRaises(ValueError) as context:
+            self.executor._validate_llm_summary_output([])
+        self.assertIn("must return a dict", str(context.exception))
+    
+    def test_validate_llm_summary_output_missing_fields(self):
+        """Test that LLM summary output with missing fields raises ValueError."""
+        invalid_output = {
+            'alerts': []
+            # Missing 'llm_summary'
+        }
+        with self.assertRaises(ValueError) as context:
+            self.executor._validate_llm_summary_output(invalid_output)
+        self.assertIn("missing required fields", str(context.exception))
+    
+    def test_validate_llm_summary_output_invalid_alerts_type(self):
+        """Test that LLM summary output with non-list alerts raises ValueError."""
+        invalid_output = {
+            'alerts': 'not a list',
+            'llm_summary': {}
+        }
+        with self.assertRaises(ValueError) as context:
+            self.executor._validate_llm_summary_output(invalid_output)
+        self.assertIn("'alerts' must be a list", str(context.exception))
+    
     def test_validate_triage_output_valid(self):
         """Test that valid triage output passes validation."""
         valid_triaged = [
@@ -114,10 +160,13 @@ class TestPipelineExecutor(unittest.TestCase):
         self.assertIn("must return a dict", str(context.exception))
     
     @patch('orchestrator.orchestrator.MonitorAgent')
+    @patch('orchestrator.orchestrator.LLMAlertSummaryAgent')
     @patch('orchestrator.orchestrator.TriageAgent')
     @patch('orchestrator.orchestrator.ResolutionAgent')
+    @patch('orchestrator.orchestrator.LLMResolutionAgent')
     @patch('orchestrator.orchestrator.OpsLogAgent')
-    def test_pipeline_sequential_execution(self, mock_opslog, mock_resolution, mock_triage, mock_monitor):
+    @patch('orchestrator.orchestrator.LLMGovernanceAgent')
+    def test_pipeline_sequential_execution(self, mock_governance, mock_opslog, mock_llm_resolution, mock_resolution, mock_triage, mock_llm_summary, mock_monitor):
         """Test that pipeline executes agents in strict sequential order."""
         # Setup mock return values
         mock_monitor_instance = Mock()
@@ -125,6 +174,20 @@ class TestPipelineExecutor(unittest.TestCase):
             {'timestamp': '2025-11-15 10:00:00', 'level': 'ERROR', 'message': 'Test error'}
         ]
         mock_monitor.return_value = mock_monitor_instance
+        
+        mock_llm_summary_instance = Mock()
+        mock_llm_summary_instance.run.return_value = {
+            'alerts': [
+                {'timestamp': '2025-11-15 10:00:00', 'level': 'ERROR', 'message': 'Test error'}
+            ],
+            'llm_summary': {
+                'summary': 'Test summary',
+                'categories': ['General'],
+                'severity_breakdown': {'ERROR': 1},
+                'root_causes': ['Test cause']
+            }
+        }
+        mock_llm_summary.return_value = mock_llm_summary_instance
         
         mock_triage_instance = Mock()
         mock_triage_instance.run.return_value = [
@@ -149,6 +212,25 @@ class TestPipelineExecutor(unittest.TestCase):
         ]
         mock_resolution.return_value = mock_resolution_instance
         
+        mock_llm_resolution_instance = Mock()
+        mock_llm_resolution_instance.run.return_value = {
+            'resolution_plans': [
+                {
+                    'alert_id': 'test_123',
+                    'severity': 'high',
+                    'category': 'general',
+                    'recommended_actions': ['Action 1']
+                }
+            ],
+            'llm_resolution_summary': {
+                'summary': 'Test resolution summary',
+                'recommendations': ['Recommendation 1'],
+                'escalation': 'No escalation required',
+                'affected_systems': ['System 1']
+            }
+        }
+        mock_llm_resolution.return_value = mock_llm_resolution_instance
+        
         mock_opslog_instance = Mock()
         mock_opslog_instance.run.return_value = {
             'status': 'logged',
@@ -157,19 +239,41 @@ class TestPipelineExecutor(unittest.TestCase):
         }
         mock_opslog.return_value = mock_opslog_instance
         
+        mock_governance_instance = Mock()
+        mock_governance_instance.run.return_value = {
+            'audit_summary': {
+                'status': 'logged',
+                'count': 1,
+                'timestamp': '2025-11-15 10:00:00'
+            },
+            'governance_analysis': {
+                'risk': 'low',
+                'escalation': 'No escalation required',
+                'compliance_issues': [],
+                'commentary': 'Test commentary'
+            }
+        }
+        mock_governance.return_value = mock_governance_instance
+        
         # Execute pipeline
         executor = PipelineExecutor()
         result = executor.run()
         
         # Verify sequential execution
         mock_monitor_instance.run.assert_called_once()
+        mock_llm_summary_instance.run.assert_called_once()
         mock_triage_instance.run.assert_called_once()
         mock_resolution_instance.run.assert_called_once()
+        mock_llm_resolution_instance.run.assert_called_once()
         mock_opslog_instance.run.assert_called_once()
+        mock_governance_instance.run.assert_called_once()
         
-        # Verify result
-        self.assertEqual(result['status'], 'logged')
-        self.assertEqual(result['count'], 1)
+        # Verify result structure (now returns governance output)
+        self.assertIn('audit_summary', result)
+        self.assertIn('governance_analysis', result)
+        self.assertEqual(result['audit_summary']['status'], 'logged')
+        self.assertEqual(result['audit_summary']['count'], 1)
+        self.assertEqual(result['governance_analysis']['risk'], 'low')
 
 
 if __name__ == '__main__':
