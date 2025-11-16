@@ -16,16 +16,37 @@ class OpenAIClient:
     
     Logs request metadata, response metadata, JSON parsing status,
     and fallback/error reporting to logs/pipeline.log.
+    
+    Implements singleton pattern to avoid repeated initialization.
     """
     
     _logger = None
+    _instance = None
+    _initialized = False
     
-    def __init__(self, model: str = "gpt-4.1-mini"):
-        """Initialize the OpenAI client.
+    def __new__(cls, model: str = "gpt-4o-mini"):
+        """Create or return the singleton instance.
+        
+        Args:
+            model (str): The OpenAI model to use.
+            
+        Returns:
+            OpenAIClient: The singleton instance.
+        """
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+        return cls._instance
+    
+    def __init__(self, model: str = "gpt-4o-mini"):
+        """Initialize the OpenAI client (only once).
         
         Args:
             model (str): The OpenAI model to use.
         """
+        # Only initialize once
+        if self._initialized:
+            return
+            
         self.model = model
         self.api_key = os.getenv("OPENAI_API_KEY")
         use_real = os.getenv("USE_REAL_OPENAI", "false").lower() == "true"
@@ -33,6 +54,9 @@ class OpenAIClient:
         
         self._setup_logging()
         self._log_initialization()
+        
+        # Mark as initialized
+        OpenAIClient._initialized = True
 
     @classmethod
     def _setup_logging(cls):
@@ -52,6 +76,9 @@ class OpenAIClient:
         # Create logger
         cls._logger = logging.getLogger("IncidentOps.LLM")
         cls._logger.setLevel(logging.INFO)
+        
+        # Disable propagation to parent logger to avoid duplicate messages
+        cls._logger.propagate = False
         
         # Avoid duplicate handlers
         if cls._logger.handlers:
