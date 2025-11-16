@@ -76,3 +76,10 @@ Rules:
 ```
 utils/json_parser.py
 ```
+
+## Logging Structure
+All runtime logs must be written to:
+```
+logs/pipeline.log
+```
+The logs directory is located at the project root and stores all pipeline logs for debugging, audit, and demonstration.

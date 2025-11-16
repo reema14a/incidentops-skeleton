@@ -5,8 +5,19 @@ from agents.base_agent import BaseAgent
 
 class OpsLogAgent(BaseAgent):
     """
-    OpsLogAgent generates structured audit log entries for governance and traceability.
-    Persists incident resolution data to JSON format with full pipeline context.
+    OpsLogAgent generates factual, structured audit log entries for governance and traceability.
+    
+    This agent is responsible ONLY for:
+    - Recording factual data from the pipeline execution
+    - Persisting structured audit records to JSON
+    - Maintaining execution timestamps and metadata
+    
+    This agent does NOT:
+    - Perform interpretation or analysis
+    - Generate human-readable summaries
+    - Compute risk or make escalation decisions
+    
+    All interpretive logic belongs in LLMGovernanceAgent.
     """
     
     def __init__(self, name, output_path="data/output_log.json"):
@@ -22,28 +33,31 @@ class OpsLogAgent(BaseAgent):
     
     def run(self, resolution_plans):
         """
-        Generate and persist audit log entry from resolution plans.
+        Generate and persist factual audit log entry from resolution plans.
         
         Args:
-            resolution_plans (list): List of resolution plan dictionaries from ResolutionAgent
+            resolution_plans (list): List of resolution plan dictionaries from LLMResolutionAgent
             
         Returns:
             dict: Summary of logging operation with status and metadata
         """
-        self.log("Generating audit log entry...")
+        self.log("Recording factual audit log entry...")
         
         if not resolution_plans:
             self.log("No resolution plans to log.")
             return {"status": "no_data", "count": 0, "timestamp": None, "output_path": None}
         
-        # Generate structured audit entry
+        # Generate structured audit entry (factual data only)
         audit_entry = self._create_audit_entry(resolution_plans)
         
         # Persist to JSON file
         success = self._persist_audit_log(audit_entry)
         
-        # Log summary
-        self._log_summary(audit_entry, success)
+        # Log operation status (factual only)
+        if success:
+            self.log(f"Audit log persisted: {len(resolution_plans)} incident(s) recorded")
+        else:
+            self.log("Failed to persist audit log")
         
         # Return operation summary
         return {
@@ -55,17 +69,23 @@ class OpsLogAgent(BaseAgent):
     
     def _create_audit_entry(self, resolution_plans):
         """
-        Create structured audit log entry with full pipeline context.
+        Create factual structured audit log entry with pipeline execution data.
+        
+        This method records ONLY factual data without interpretation:
+        - Timestamps
+        - Counts and distributions
+        - Raw resolution plans
+        - Agent execution order
         
         Args:
             resolution_plans (list): List of resolution plan dictionaries
             
         Returns:
-            dict: Structured audit entry with all required fields
+            dict: Structured audit entry with factual fields only
         """
         execution_timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         
-        # Extract stage outputs
+        # Extract factual stage outputs (counts and distributions only)
         stage_outputs = {
             "monitor_stage": {
                 "alerts_detected": len(resolution_plans),
@@ -81,25 +101,21 @@ class OpsLogAgent(BaseAgent):
             }
         }
         
-        # Agent execution order
+        # Agent execution order (factual record)
         agent_execution_order = [
             "MonitorAgent",
             "TriageAgent", 
-            "ResolutionAgent",
+            "LLMResolutionAgent",
             "OpsLogAgent"
         ]
         
-        # Generate summary of recommendations
-        recommendations_summary = self._generate_recommendations_summary(resolution_plans)
-        
-        # Build complete audit entry
+        # Build complete audit entry (factual data only)
         audit_entry = {
             "execution_timestamp": execution_timestamp,
             "pipeline_name": "incident_detection",
             "agent_execution_order": agent_execution_order,
             "stage_outputs": stage_outputs,
             "resolution_plans": resolution_plans,
-            "recommendations_summary": recommendations_summary,
             "total_incidents": len(resolution_plans),
             "audit_metadata": {
                 "logged_by": self.name,
@@ -114,6 +130,8 @@ class OpsLogAgent(BaseAgent):
         """
         Count occurrences of values for a specific field in plans.
         
+        This is a factual counting operation with no interpretation.
+        
         Args:
             plans (list): List of plan dictionaries
             field (str): Field name to count
@@ -124,43 +142,15 @@ class OpsLogAgent(BaseAgent):
         counts = {}
         for plan in plans:
             value = plan.get(field, 'unknown')
-            # Convert priority numbers to labels
+            # Convert priority numbers to labels for readability
             if field == 'priority':
                 value = ['critical', 'high', 'medium', 'low'][value - 1] if isinstance(value, int) and 1 <= value <= 4 else str(value)
             counts[str(value)] = counts.get(str(value), 0) + 1
         return counts
     
-    def _generate_recommendations_summary(self, resolution_plans):
-        """
-        Generate high-level summary of all recommendations.
-        
-        Args:
-            resolution_plans (list): List of resolution plan dictionaries
-            
-        Returns:
-            dict: Summary of recommendations by priority and category
-        """
-        summary = {
-            "total_actions": sum(len(plan.get('recommended_actions', [])) for plan in resolution_plans),
-            "high_priority_count": sum(1 for plan in resolution_plans if plan.get('priority', 4) <= 2),
-            "categories_affected": list(set(plan.get('category', 'unknown') for plan in resolution_plans)),
-            "critical_actions": []
-        }
-        
-        # Extract critical actions (priority 1)
-        for plan in resolution_plans:
-            if plan.get('priority') == 1:
-                summary["critical_actions"].append({
-                    "alert_id": plan.get('alert_id'),
-                    "category": plan.get('category'),
-                    "actions": plan.get('recommended_actions', [])
-                })
-        
-        return summary
-    
     def _persist_audit_log(self, audit_entry):
         """
-        Persist audit entry to JSON file.
+        Persist factual audit entry to JSON file.
         
         Args:
             audit_entry (dict): Structured audit entry
@@ -199,29 +189,3 @@ class OpsLogAgent(BaseAgent):
         except Exception as e:
             self.log(f"Error writing audit log: {str(e)}")
             return False
-    
-    def _log_summary(self, audit_entry, success):
-        """
-        Log summary of audit entry creation.
-        
-        Args:
-            audit_entry (dict): The created audit entry
-            success (bool): Whether persistence was successful
-        """
-        if success:
-            self.log(f"Logged {audit_entry['total_incidents']} incident(s)")
-            
-            # Log severity breakdown
-            severity_dist = audit_entry['stage_outputs']['triage_stage']['severity_distribution']
-            self.log(f"  Severity: {', '.join(f'{k}({v})' for k, v in severity_dist.items())}")
-            
-            # Log category breakdown
-            category_dist = audit_entry['stage_outputs']['triage_stage']['category_distribution']
-            self.log(f"  Categories: {', '.join(f'{k}({v})' for k, v in category_dist.items())}")
-            
-            # Log high priority count
-            high_priority = audit_entry['recommendations_summary']['high_priority_count']
-            if high_priority > 0:
-                self.log(f"  ⚠️  {high_priority} high-priority incident(s) require immediate attention")
-        else:
-            self.log("Failed to persist audit log")

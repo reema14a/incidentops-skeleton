@@ -6,7 +6,7 @@ import json
 import yaml
 from typing import Dict, Any
 from agents.base_agent import BaseAgent
-from agents.openai_client import OpenAIClient
+from llm.openai_client import OpenAIClient
 from utils.json_parser import extract_json_block
 
 
@@ -156,13 +156,15 @@ Provide a JSON object with:
     
     def _simplify_audit_log(self, audit_log: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Simplify audit log for LLM analysis by removing verbose fields.
+        Simplify audit log for LLM analysis by removing verbose fields and adding interpretive summaries.
+        
+        This method performs interpretation and summarization that OpsLogAgent does not do.
         
         Args:
             audit_log: Full audit log entry
             
         Returns:
-            Dict: Simplified audit log for LLM
+            Dict: Simplified audit log with interpretive summaries for LLM
         """
         if not audit_log:
             return {}
@@ -171,12 +173,12 @@ Provide a JSON object with:
         simplified = {
             'timestamp': audit_log.get('execution_timestamp'),
             'total_incidents': audit_log.get('total_incidents', 0),
-            'stage_outputs': audit_log.get('stage_outputs', {}),
-            'recommendations_summary': audit_log.get('recommendations_summary', {})
+            'stage_outputs': audit_log.get('stage_outputs', {})
         }
         
         # Add resolution plan summaries (without full details)
-        if 'resolution_plans' in audit_log:
+        resolution_plans = audit_log.get('resolution_plans', [])
+        if resolution_plans:
             simplified['resolution_plans_summary'] = [
                 {
                     'severity': plan.get('severity'),
@@ -184,10 +186,44 @@ Provide a JSON object with:
                     'priority': plan.get('priority'),
                     'action_count': len(plan.get('recommended_actions', []))
                 }
-                for plan in audit_log['resolution_plans']
+                for plan in resolution_plans
             ]
+            
+            # Add interpretive recommendations summary (moved from OpsLogAgent)
+            simplified['recommendations_summary'] = self._generate_recommendations_summary(resolution_plans)
         
         return simplified
+    
+    def _generate_recommendations_summary(self, resolution_plans: list) -> Dict[str, Any]:
+        """
+        Generate interpretive summary of recommendations for governance analysis.
+        
+        This interpretive logic was moved from OpsLogAgent to maintain separation of concerns.
+        OpsLogAgent records facts; LLMGovernanceAgent interprets them.
+        
+        Args:
+            resolution_plans: List of resolution plan dictionaries
+            
+        Returns:
+            Dict: Interpretive summary of recommendations
+        """
+        summary = {
+            "total_actions": sum(len(plan.get('recommended_actions', [])) for plan in resolution_plans),
+            "high_priority_count": sum(1 for plan in resolution_plans if plan.get('priority', 4) <= 2),
+            "categories_affected": list(set(plan.get('category', 'unknown') for plan in resolution_plans)),
+            "critical_actions": []
+        }
+        
+        # Extract critical actions (priority 1) for governance review
+        for plan in resolution_plans:
+            if plan.get('priority') == 1:
+                summary["critical_actions"].append({
+                    "alert_id": plan.get('alert_id'),
+                    "category": plan.get('category'),
+                    "actions": plan.get('recommended_actions', [])
+                })
+        
+        return summary
     
     def _parse_llm_response(self, response: str) -> Dict[str, Any]:
         """

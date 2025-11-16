@@ -5,10 +5,9 @@ This module ensures strict sequential data flow across all agents:
 1. MonitorAgent → alerts (list of dicts with timestamp, level, message)
 2. LLMAlertSummaryAgent → enriched alerts with LLM summary
 3. TriageAgent → triaged alerts (adds severity, category)
-4. ResolutionAgent → resolution plans (adds recommended_actions)
-5. LLMResolutionAgent → enriched resolution plans with LLM summary
-6. OpsLogAgent → audit summary (dict with status, count, timestamp)
-7. LLMGovernanceAgent → governance analysis (risk scoring, escalation, compliance)
+4. LLMResolutionAgent → resolution plans with LLM-generated recommendations and summary
+5. OpsLogAgent → audit summary (dict with status, count, timestamp)
+6. LLMGovernanceAgent → governance analysis (risk scoring, escalation, compliance)
 
 Each stage validates input/output data structures to prevent invalid data flow.
 Pipeline execution stops immediately if any validation fails.
@@ -17,7 +16,6 @@ from typing import Any, List, Dict
 from agents.monitor_agent import MonitorAgent
 from agents.llm_alert_summary_agent import LLMAlertSummaryAgent
 from agents.triage_agent import TriageAgent
-from agents.resolution_agent import ResolutionAgent
 from agents.llm_resolution_agent import LLMResolutionAgent
 from agents.opslog_agent import OpsLogAgent
 from agents.llm_governance_agent import LLMGovernanceAgent
@@ -35,7 +33,6 @@ class PipelineExecutor:
             'monitor': MonitorAgent("MonitorAgent"),
             'llm_summary': LLMAlertSummaryAgent("LLMAlertSummaryAgent"),
             'triage': TriageAgent("TriageAgent"),
-            'resolution': ResolutionAgent("ResolutionAgent"),
             'llm_resolution': LLMResolutionAgent("LLMResolutionAgent"),
             'opslog': OpsLogAgent("OpsLogAgent"),
             'governance': LLMGovernanceAgent("LLMGovernanceAgent")
@@ -150,35 +147,7 @@ class PipelineExecutor:
         
         return data
     
-    def _validate_resolution_output(self, data: Any) -> List[Dict]:
-        """
-        Validate ResolutionAgent output structure.
-        
-        Args:
-            data: Output from ResolutionAgent
-            
-        Returns:
-            List[Dict]: Validated resolution plan list
-            
-        Raises:
-            ValueError: If data structure is invalid
-        """
-        if not isinstance(data, list):
-            raise ValueError(f"ResolutionAgent must return a list, got {type(data).__name__}")
-        
-        for idx, plan in enumerate(data):
-            if not isinstance(plan, dict):
-                raise ValueError(f"Resolution plan {idx} must be a dict, got {type(plan).__name__}")
-            
-            required_fields = ['alert_id', 'severity', 'category', 'recommended_actions']
-            missing_fields = [field for field in required_fields if field not in plan]
-            if missing_fields:
-                raise ValueError(f"Resolution plan {idx} missing required fields: {missing_fields}")
-            
-            if not isinstance(plan.get('recommended_actions'), list):
-                raise ValueError(f"Resolution plan {idx} 'recommended_actions' must be a list")
-        
-        return data
+
     
     def _validate_llm_resolution_output(self, data: Any) -> Dict:
         """
@@ -294,25 +263,19 @@ class PipelineExecutor:
             triaged = self._validate_triage_output(triaged)
             self._log_stage('TriageAgent', 'completed', len(triaged))
             
-            # Stage 4: Resolution (depends on Triage output)
-            self._log_stage('ResolutionAgent', 'started')
-            plans = self.agents['resolution'].run(triaged)
-            plans = self._validate_resolution_output(plans)
-            self._log_stage('ResolutionAgent', 'completed', len(plans))
-            
-            # Stage 5: LLM Resolution (depends on Resolution output)
+            # Stage 4: LLM Resolution (depends on Triage output)
             self._log_stage('LLMResolutionAgent', 'started')
-            llm_resolution_output = self.agents['llm_resolution'].run(plans)
+            llm_resolution_output = self.agents['llm_resolution'].run(triaged)
             llm_resolution_output = self._validate_llm_resolution_output(llm_resolution_output)
             self._log_stage('LLMResolutionAgent', 'completed', len(llm_resolution_output['resolution_plans']))
             
-            # Stage 6: OpsLog (depends on LLM Resolution output - extract resolution_plans)
+            # Stage 5: OpsLog (depends on LLM Resolution output - extract resolution_plans)
             self._log_stage('OpsLogAgent', 'started')
             summary = self.agents['opslog'].run(llm_resolution_output['resolution_plans'])
             summary = self._validate_opslog_output(summary)
             self._log_stage('OpsLogAgent', 'completed', summary.get('count', 0))
             
-            # Stage 7: Governance (depends on OpsLog output)
+            # Stage 6: Governance (depends on OpsLog output)
             self._log_stage('LLMGovernanceAgent', 'started')
             governance_output = self.agents['governance'].run(summary)
             governance_output = self._validate_governance_output(governance_output)

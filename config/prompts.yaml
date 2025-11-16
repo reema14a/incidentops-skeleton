@@ -9,15 +9,21 @@ alert_summary_prompt: |
   - root_causes: list of likely root causes
 
 resolution_prompt: |
-  You are an AI incident resolution assistant. Given this list of remediation
-  actions (JSON):
-  {actions}
+  You are an AI incident resolution assistant. Given these triaged alerts (JSON):
+  {alerts}
 
-  Provide a JSON object with:
+  Analyze each alert and provide a JSON object with:
+  - resolution_plans: array of objects, each with:
+    - alert_id: unique identifier (use timestamp_index format)
+    - severity: alert severity
+    - category: alert category
+    - message: alert message
+    - recommended_actions: list of specific remediation steps
+    - priority: numeric priority (1=highest, 4=lowest)
+    - reasoning: explanation for the recommendations
   - summary: short readable summary for on-call
-  - recommendations: list of grouped recommended steps
   - escalation: suggested escalation paths
-  - affected_systems: list
+  - affected_systems: list of affected systems
 
 governance_prompt: |
   You are an AI governance and compliance auditor. Analyze the following final log summary (JSON):

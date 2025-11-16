@@ -134,3 +134,28 @@ If the response cannot be parsed as JSON:
 - Agent logic must remain deterministic and stateless.
 - Logging should use self.log().
 - All LLM agents must call the OpenAIClient.generate() method.
+
+## Separation of Responsibilities Between OpsLogAgent and LLMGovernanceAgent
+
+- OpsLogAgent must ONLY produce a factual, deterministic audit log.
+  It should not:
+  * perform interpretation
+  * compute risk
+  * generate human-readable summaries
+  * perform escalation logic
+
+- LLMGovernanceAgent is the ONLY agent responsible for:
+  * governance summaries
+  * risk scoring
+  * escalation decisions
+  * compliance analysis
+
+- If overlapping functionality is detected, Kiro should move:
+  * explanatory or interpretive logic → LLMGovernanceAgent
+  * factual structured data recording → OpsLogAgent
+
+## Logging Standard
+- All agents must use BaseAgent.log().
+- BaseAgent.log() must write to both console and file.
+- File logging must use a rotating handler.
+- No agent must write directly using print() except BaseAgent.log().

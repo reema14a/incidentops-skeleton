@@ -3,23 +3,57 @@
 
 import json
 import os
+from unittest.mock import Mock, patch
 from agents.monitor_agent import MonitorAgent
 from agents.triage_agent import TriageAgent
-from agents.resolution_agent import ResolutionAgent
+from agents.llm_resolution_agent import LLMResolutionAgent
 from agents.opslog_agent import OpsLogAgent
 
 def test_opslog_agent():
-    """Test the OpsLogAgent with real ResolutionAgent output."""
+    """Test the OpsLogAgent with mocked LLMResolutionAgent output."""
     
-    # Step 1: Run full pipeline to get resolution plans
+    # Step 1: Run monitor and triage to get triaged alerts
     monitor = MonitorAgent("Monitor")
     alerts = monitor.run()
     
     triage = TriageAgent("Triage")
     triaged_alerts = triage.run(alerts)
     
-    resolution = ResolutionAgent("Resolution")
-    resolution_plans = resolution.run(triaged_alerts)
+    # Step 2: Mock LLMResolutionAgent to get resolution plans
+    mock_llm_response = {
+        'resolution_plans': [
+            {
+                'alert_id': f"{alert.get('timestamp', 'unknown')}_{idx}",
+                'timestamp': alert.get('timestamp'),
+                'severity': alert.get('severity'),
+                'category': alert.get('category'),
+                'message': alert.get('message'),
+                'recommended_actions': [
+                    f"Investigate {alert.get('category')} issue",
+                    "Review system logs",
+                    "Monitor metrics"
+                ],
+                'priority': {'critical': 1, 'high': 2, 'medium': 3, 'low': 4}.get(alert.get('severity'), 3),
+                'reasoning': f"Standard response for {alert.get('severity')} severity"
+            }
+            for idx, alert in enumerate(triaged_alerts)
+        ],
+        'llm_resolution_summary': {
+            'summary': 'Test resolution summary',
+            'escalation': 'Test escalation',
+            'affected_systems': ['test']
+        }
+    }
+    
+    with patch('agents.llm_resolution_agent.OpenAIClient') as MockClient:
+        mock_client_instance = Mock()
+        MockClient.return_value = mock_client_instance
+        
+        resolution = LLMResolutionAgent("Resolution")
+        resolution.run = Mock(return_value=mock_llm_response)
+        resolution_output = resolution.run(triaged_alerts)
+    
+    resolution_plans = resolution_output['resolution_plans']
     
     print("\n" + "="*60)
     print("RESOLUTION PLANS INPUT:")
@@ -72,14 +106,13 @@ def test_opslog_agent():
     
     audit_entry = audit_logs[-1]  # Get the latest entry
     
-    # Verify required top-level fields
+    # Verify required top-level fields (factual data only)
     required_fields = [
         'execution_timestamp',
         'pipeline_name',
         'agent_execution_order',
         'stage_outputs',
         'resolution_plans',
-        'recommendations_summary',
         'total_incidents',
         'audit_metadata'
     ]
@@ -88,8 +121,12 @@ def test_opslog_agent():
         assert field in audit_entry, f"Missing required field: {field}"
         print(f"  ✓ Field present: {field}")
     
+    # Verify recommendations_summary is NOT present (moved to LLMGovernanceAgent)
+    assert 'recommendations_summary' not in audit_entry, "recommendations_summary should not be in OpsLogAgent output (belongs in LLMGovernanceAgent)"
+    print("  ✓ recommendations_summary correctly absent (interpretive logic moved to LLMGovernanceAgent)")
+    
     # Verify agent execution order
-    expected_order = ["MonitorAgent", "TriageAgent", "ResolutionAgent", "OpsLogAgent"]
+    expected_order = ["MonitorAgent", "TriageAgent", "LLMResolutionAgent", "OpsLogAgent"]
     assert audit_entry['agent_execution_order'] == expected_order, "Agent execution order mismatch"
     print(f"  ✓ Agent execution order correct: {expected_order}")
     
@@ -119,14 +156,6 @@ def test_opslog_agent():
     assert 'priority_distribution' in resolution_stage, "Missing priority_distribution"
     assert resolution_stage['plans_generated'] == len(resolution_plans), "Plans count mismatch"
     print(f"  ✓ Resolution stage: {resolution_stage['plans_generated']} plans")
-    
-    # Verify recommendations summary
-    rec_summary = audit_entry['recommendations_summary']
-    assert 'total_actions' in rec_summary, "Missing total_actions"
-    assert 'high_priority_count' in rec_summary, "Missing high_priority_count"
-    assert 'categories_affected' in rec_summary, "Missing categories_affected"
-    assert 'critical_actions' in rec_summary, "Missing critical_actions"
-    print(f"  ✓ Recommendations summary: {rec_summary['total_actions']} total actions")
     
     # Verify audit metadata
     metadata = audit_entry['audit_metadata']

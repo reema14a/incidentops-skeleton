@@ -6,7 +6,7 @@ import json
 import yaml
 from typing import List, Dict, Any
 from agents.base_agent import BaseAgent
-from agents.openai_client import OpenAIClient
+from llm.openai_client import OpenAIClient
 from utils.json_parser import extract_json_block
 
 class LLMAlertSummaryAgent(BaseAgent):

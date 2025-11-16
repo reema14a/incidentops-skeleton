@@ -116,32 +116,7 @@ class TestPipelineExecutor(unittest.TestCase):
         self.assertIn("missing required fields", str(context.exception))
         self.assertIn("severity", str(context.exception))
     
-    def test_validate_resolution_output_valid(self):
-        """Test that valid resolution output passes validation."""
-        valid_plans = [
-            {
-                'alert_id': 'test_123',
-                'severity': 'high',
-                'category': 'database',
-                'recommended_actions': ['Restart database', 'Check logs']
-            }
-        ]
-        result = self.executor._validate_resolution_output(valid_plans)
-        self.assertEqual(result, valid_plans)
-    
-    def test_validate_resolution_output_invalid_actions(self):
-        """Test that resolution output with non-list actions raises ValueError."""
-        invalid_plans = [
-            {
-                'alert_id': 'test_123',
-                'severity': 'high',
-                'category': 'database',
-                'recommended_actions': 'not a list'
-            }
-        ]
-        with self.assertRaises(ValueError) as context:
-            self.executor._validate_resolution_output(invalid_plans)
-        self.assertIn("must be a list", str(context.exception))
+
     
     def test_validate_opslog_output_valid(self):
         """Test that valid opslog output passes validation."""
@@ -162,11 +137,10 @@ class TestPipelineExecutor(unittest.TestCase):
     @patch('orchestrator.orchestrator.MonitorAgent')
     @patch('orchestrator.orchestrator.LLMAlertSummaryAgent')
     @patch('orchestrator.orchestrator.TriageAgent')
-    @patch('orchestrator.orchestrator.ResolutionAgent')
     @patch('orchestrator.orchestrator.LLMResolutionAgent')
     @patch('orchestrator.orchestrator.OpsLogAgent')
     @patch('orchestrator.orchestrator.LLMGovernanceAgent')
-    def test_pipeline_sequential_execution(self, mock_governance, mock_opslog, mock_llm_resolution, mock_resolution, mock_triage, mock_llm_summary, mock_monitor):
+    def test_pipeline_sequential_execution(self, mock_governance, mock_opslog, mock_llm_resolution, mock_triage, mock_llm_summary, mock_monitor):
         """Test that pipeline executes agents in strict sequential order."""
         # Setup mock return values
         mock_monitor_instance = Mock()
@@ -201,17 +175,6 @@ class TestPipelineExecutor(unittest.TestCase):
         ]
         mock_triage.return_value = mock_triage_instance
         
-        mock_resolution_instance = Mock()
-        mock_resolution_instance.run.return_value = [
-            {
-                'alert_id': 'test_123',
-                'severity': 'high',
-                'category': 'general',
-                'recommended_actions': ['Action 1']
-            }
-        ]
-        mock_resolution.return_value = mock_resolution_instance
-        
         mock_llm_resolution_instance = Mock()
         mock_llm_resolution_instance.run.return_value = {
             'resolution_plans': [
@@ -224,7 +187,6 @@ class TestPipelineExecutor(unittest.TestCase):
             ],
             'llm_resolution_summary': {
                 'summary': 'Test resolution summary',
-                'recommendations': ['Recommendation 1'],
                 'escalation': 'No escalation required',
                 'affected_systems': ['System 1']
             }
@@ -263,7 +225,6 @@ class TestPipelineExecutor(unittest.TestCase):
         mock_monitor_instance.run.assert_called_once()
         mock_llm_summary_instance.run.assert_called_once()
         mock_triage_instance.run.assert_called_once()
-        mock_resolution_instance.run.assert_called_once()
         mock_llm_resolution_instance.run.assert_called_once()
         mock_opslog_instance.run.assert_called_once()
         mock_governance_instance.run.assert_called_once()
