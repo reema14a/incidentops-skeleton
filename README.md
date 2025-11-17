@@ -38,7 +38,7 @@ Each agent is defined declaratively in `specs/agents.yaml` and orchestrated via 
 | IDE           | **Kiro**          | Spec-driven, agentic development |
 | Config        | YAML              | Agent + workflow definitions     |
 | Integration   | MCP Hooks         | Log parsing, alert simulation    |
-| Visualization | Gradio (optional) | Dashboard                        |
+| UI            | Streamlit         | Optional web interface           |
 | Governance    | JSON logs         | Traceability and explainability  |
 
 ---
@@ -81,10 +81,19 @@ cp .env.example .env
 # Edit .env with your API keys and settings
 ```
 
-**Step 3:** Run the basic flow
-`python ui/console_client.py`
+**Step 3:** Run the pipeline
 
-**Sample output:**
+**Option A: CLI Mode**
+```bash
+python3 -m ui.console_client
+```
+
+**Option B: Streamlit UI**
+```bash
+streamlit run ui/Home.py
+```
+
+**Sample CLI output:**
 [🦴 MonitorAgent] Detected 3 alerts.
 
 [💀 TriageAgent] Severity: High | Category: Database

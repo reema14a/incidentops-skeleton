@@ -116,21 +116,6 @@ Pipeline order:
 - [x] Insert into pipeline after GovernanceAgent. NotificationAgent must gracefully handle tool failures via MCPToolError and log them without stopping the pipeline.
 - [x] Add end-to-end test for notification delivery.
 
-## UI Tasks (Streamlit)
-- [ ] Build UI with:
-      - Log input field
-      - File upload
-      - Run pipeline button
-      - Collapsible agent outputs
-      - Audit log viewer
-      - Governance summary
-      - Output download
-- [ ] Add real-time log viewer from pipeline.log.
-- [ ] Add dashboards (severity breakdown, categories, timelines).
-- [ ] Add governance tab and notification tab.
-- [ ] Ensure UI does not break CLI execution.
-- [ ] Add UI tests.
-
 ## AI Framework Tasks (Optional)
 - [ ] Lightweight LangGraph state modeling inside GovernanceAgent.
 - [ ] Export flow visualization (JSON or DOT).
