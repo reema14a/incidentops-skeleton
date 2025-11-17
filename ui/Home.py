@@ -29,8 +29,8 @@ An AI-powered incident management framework that automates detection, triage, an
 Navigate using the sidebar to access:
 
 - **Pipeline Runner** - Execute the incident management pipeline with log input
-- **Audit Logs** - View pipeline execution logs *(Coming Soon)*
-- **Dashboards** - Visualize incident metrics and trends *(Coming Soon)*
+- **Audit Logs** - View pipeline execution logs
+- **Dashboards** - Visualize incident metrics and trends
 - **Governance** - Review risk scores and compliance *(Coming Soon)*
 - **Notifications** - Monitor notification channels and delivery status *(Coming Soon)*
 

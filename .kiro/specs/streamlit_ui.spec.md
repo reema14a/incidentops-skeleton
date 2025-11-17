@@ -149,17 +149,21 @@ ui/
 
 > Components must be created ONLY when this phase is active.
 
-* [ ] Create `ui/pages/3_Dashboards.py`
-* [ ] Create `ui/components/charts.py`
-* [ ] Generate severity breakdown chart
-* [ ] Generate category distribution chart
-* [ ] Generate timeline chart (if timestamps exist)
+* [x] Create `ui/pages/Dashboards.py`
+* [x] Generate severity breakdown chart
+* [x] Generate category distribution chart
+* [x] Generate timeline chart (if timestamps exist)
+- [x] Refactor Dashboards page to use reusable chart components from ui/components/charts.py
+- [x] Add tabular options at top of page after summary for each chart isntead of scrolling through the page
+- [x] Make Insights as the first default tab. 
+- [x] Add "Refresh" button to right side of the page after section name
+- [x] Add optional auto-refresh interval selector
 
 ---
 
 ## **Phase 4 — Governance**
 
-* [ ] Create `ui/pages/4_Governance.py`
+* [ ] Create `ui/pages/Governance.py`
 * [ ] Display risk score
 * [ ] Display escalation decision
 * [ ] Display compliance issues
@@ -169,7 +173,7 @@ ui/
 
 ## **Phase 5 — Notifications**
 
-* [ ] Create `ui/pages/5_Notifications.py`
+* [ ] Create `ui/pages/Notifications.py`
 * [ ] Show enabled channels from settings
 * [ ] Show last notification results
 * [ ] Show success/error messages
@@ -197,7 +201,8 @@ ui/
 * Real-time logs work
 * Dashboards render cleanly
 * Governance & notification pages functional
-* UI tests pass
+* Create UI validation tests under tests/ui
+* No need to delete UI validation tests
 * No secrets exposed
 
 ---
