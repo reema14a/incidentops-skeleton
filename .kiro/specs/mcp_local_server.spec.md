@@ -68,6 +68,29 @@ This spec defines a simple local HTTP-based MCP server that replaces viaSocket/S
 - Mock SMTP and Pushover API
 - Test happy path and error cases
 
+## Logging Requirements
+
+- All MCP Server logs must be written both to console and to:
+  logs/mcp_server.log
+
+- Required fields in every log line:
+  - timestamp
+  - logger name
+  - request_id (if available)
+  - tool name
+  - execution status (started, success, failure)
+
+- Never log secrets (email, passwords, API keys)
+- Log tool arguments only after redacting secrets
+- Log full exception trace when a tool fails
+
+- Server must show:
+  - Successful send of each tool
+  - Errors formatted using JSON-RPC error structure
+  - Startup message with endpoints:
+      - POST /send
+      - GET /health
+
 ## Tasks
 
 ### Core Server Implementation Tasks
@@ -78,20 +101,26 @@ This spec defines a simple local HTTP-based MCP server that replaces viaSocket/S
 - [x] Use SettingsLoader.get_secret for credentials
 - [x] Ensure JSON-RPC compliance in every response
 
-### Configuration Tasks
+### Test Tasks
 
-- [ ] Update settings.yaml default endpoint for MCP to [http://localhost:5005/send](http://localhost:5005/send)
+- [x] Create unit tests under tests/local_mcp_server/ for:
+      - JSON-RPC validation errors
+      - Router dispatch success + tool-not-found
+      - Gmail tool using mocks
+      - Pushover tool using mocks
+
+- [x] Create E2E tests under tests/e2e/ for:
+      - MCPClient → Local MCP Server → gmail.send
+      - MCPClient → Local MCP Server → pushover.send
+
+- [x] Ensure no real network calls (all external services mocked)
+
+- [x] Ensure coverage for invalid JSON-RPC structure, 
+      missing params, invalid tool names, and tool exceptions.
 
 ### Validation Tasks
-
-- [ ] Generate tests for:
-  - MCP router (success + missing tool)
-  - Gmail tool (mock SMTP)
-  - Pushover tool (mock requests)
-  - Full E2E roundtrip: MCPClient → Local MCP Server → tool
-
-- [ ] Make NotificationAgent send gmail and pushover notifications successfully through local server
-- [ ] Ensure consistent logging without exposing secrets
+- [x] Make NotificationAgent send gmail and pushover notifications successfully through local server
+- [x] Ensure consistent logging (refer logging requirements above) without exposing secrets
 
 ### Acceptance Criteria
 

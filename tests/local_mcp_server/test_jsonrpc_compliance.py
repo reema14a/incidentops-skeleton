@@ -261,6 +261,139 @@ class TestJSONRPCCompliance:
         assert data['error']['code'] == -32602  # Invalid params for missing credentials
         assert 'result' not in data
     
+    @patch('llm.local_mcp.tools.gmail_tool.smtplib.SMTP')
+    @patch('llm.local_mcp.tools.gmail_tool.get_settings')
+    def test_tool_execution_exception_smtp_error(self, mock_get_settings: MagicMock, mock_smtp: MagicMock, client) -> None:
+        """Test that SMTP exceptions during tool execution return internal error."""
+        # Arrange
+        mock_settings = MagicMock()
+        mock_settings.get_secret.side_effect = lambda key: {
+            'GMAIL_USER': 'test@gmail.com',
+            'GMAIL_PASSWORD': 'test_password'
+        }.get(key)
+        mock_get_settings.return_value = mock_settings
+        
+        # Mock SMTP to raise exception
+        mock_smtp.side_effect = Exception("SMTP connection failed")
+        
+        request_data = {
+            'jsonrpc': '2.0',
+            'id': 12,
+            'method': 'tools/call',
+            'params': {
+                'name': 'gmail.send',
+                'arguments': {
+                    'to': 'test@example.com',
+                    'subject': 'Test',
+                    'body': 'Test body'
+                }
+            }
+        }
+        
+        # Act
+        response = client.post(
+            '/send',
+            data=json.dumps(request_data),
+            content_type='application/json'
+        )
+        
+        # Assert
+        assert response.status_code == 500
+        data = response.get_json()
+        
+        assert data['jsonrpc'] == '2.0'
+        assert data['id'] == 12
+        assert 'error' in data
+        assert data['error']['code'] == -32603  # Internal error
+        assert 'SMTP connection failed' in data['error']['data']
+        assert 'result' not in data
+    
+    @patch('llm.local_mcp.tools.pushover_tool.requests.post')
+    @patch('llm.local_mcp.tools.pushover_tool.get_settings')
+    def test_tool_execution_exception_api_error(self, mock_get_settings: MagicMock, mock_post: MagicMock, client) -> None:
+        """Test that API exceptions during tool execution return internal error."""
+        # Arrange
+        mock_settings = MagicMock()
+        mock_settings.get_secret.return_value = 'test_api_token'
+        mock_get_settings.return_value = mock_settings
+        
+        # Mock API to raise exception
+        mock_post.side_effect = Exception("API connection timeout")
+        
+        request_data = {
+            'jsonrpc': '2.0',
+            'id': 13,
+            'method': 'tools/call',
+            'params': {
+                'name': 'pushover.send',
+                'arguments': {
+                    'user': 'user_key_123',
+                    'message': 'Test message'
+                }
+            }
+        }
+        
+        # Act
+        response = client.post(
+            '/send',
+            data=json.dumps(request_data),
+            content_type='application/json'
+        )
+        
+        # Assert
+        assert response.status_code == 500
+        data = response.get_json()
+        
+        assert data['jsonrpc'] == '2.0'
+        assert data['id'] == 13
+        assert 'error' in data
+        assert data['error']['code'] == -32603  # Internal error
+        assert 'API connection timeout' in data['error']['data']
+        assert 'result' not in data
+    
+    @patch('llm.local_mcp.tools.gmail_tool.get_settings')
+    def test_tool_missing_required_argument(self, mock_get_settings: MagicMock, client) -> None:
+        """Test that missing required arguments return invalid params error."""
+        # Arrange
+        mock_settings = MagicMock()
+        mock_settings.get_secret.side_effect = lambda key: {
+            'GMAIL_USER': 'test@gmail.com',
+            'GMAIL_PASSWORD': 'test_password'
+        }.get(key)
+        mock_get_settings.return_value = mock_settings
+        
+        request_data = {
+            'jsonrpc': '2.0',
+            'id': 14,
+            'method': 'tools/call',
+            'params': {
+                'name': 'gmail.send',
+                'arguments': {
+                    'to': 'test@example.com',
+                    'subject': 'Test'
+                    # Missing 'body'
+                }
+            }
+        }
+        
+        # Act
+        response = client.post(
+            '/send',
+            data=json.dumps(request_data),
+            content_type='application/json'
+        )
+        
+        # Assert
+        assert response.status_code == 400
+        data = response.get_json()
+        
+        assert data['jsonrpc'] == '2.0'
+        assert data['id'] == 14
+        assert 'error' in data
+        assert data['error']['code'] == -32602  # Invalid params
+        assert 'Missing required argument' in data['error']['data']
+        assert 'result' not in data
+    
     def test_request_with_string_id(self, client) -> None:
         """Test that string IDs are preserved in responses."""
         request_data = {
@@ -342,6 +475,106 @@ class TestJSONRPCCompliance:
         assert data['id'] == 8
         assert data['error']['code'] == -32602
         assert 'result' not in data
+    
+    def test_missing_method_field(self, client) -> None:
+        """Test invalid request when method field is missing."""
+        request_data = {
+            'jsonrpc': '2.0',
+            'id': 9,
+            'params': {}
+        }
+        
+        response = client.post(
+            '/send',
+            data=json.dumps(request_data),
+            content_type='application/json'
+        )
+        
+        assert response.status_code == 400
+        data = response.get_json()
+        
+        assert data['jsonrpc'] == '2.0'
+        assert data['id'] == 9
+        assert data['error']['code'] == -32601
+        assert 'result' not in data
+    
+    def test_missing_id_field(self, client) -> None:
+        """Test that requests without id field are handled (notification)."""
+        request_data = {
+            'jsonrpc': '2.0',
+            'method': 'tools/call',
+            'params': {
+                'name': 'unknown.tool',
+                'arguments': {}
+            }
+        }
+        
+        response = client.post(
+            '/send',
+            data=json.dumps(request_data),
+            content_type='application/json'
+        )
+        
+        assert response.status_code == 400
+        data = response.get_json()
+        
+        # Response should still have jsonrpc and error
+        assert data['jsonrpc'] == '2.0'
+        assert 'id' in data  # id will be None
+        assert data['error']['code'] == -32602
+    
+    def test_empty_tool_name(self, client) -> None:
+        """Test invalid params when tool name is empty string."""
+        request_data = {
+            'jsonrpc': '2.0',
+            'id': 10,
+            'method': 'tools/call',
+            'params': {
+                'name': '',
+                'arguments': {}
+            }
+        }
+        
+        response = client.post(
+            '/send',
+            data=json.dumps(request_data),
+            content_type='application/json'
+        )
+        
+        assert response.status_code == 400
+        data = response.get_json()
+        
+        assert data['jsonrpc'] == '2.0'
+        assert data['id'] == 10
+        assert data['error']['code'] == -32602
+        assert 'result' not in data
+    
+    def test_params_missing_arguments_field(self, client) -> None:
+        """Test that missing arguments field defaults to empty dict."""
+        request_data = {
+            'jsonrpc': '2.0',
+            'id': 11,
+            'method': 'tools/call',
+            'params': {
+                'name': 'unknown.tool'
+                # Missing 'arguments' field
+            }
+        }
+        
+        response = client.post(
+            '/send',
+            data=json.dumps(request_data),
+            content_type='application/json'
+        )
+        
+        # Should fail because tool doesn't exist, not because arguments is missing
+        assert response.status_code == 400
+        data = response.get_json()
+        
+        assert data['jsonrpc'] == '2.0'
+        assert data['id'] == 11
+        assert data['error']['code'] == -32602
+        assert 'Unknown tool' in data['error']['data']
 
 
 class TestJSONRPCErrorCodes:

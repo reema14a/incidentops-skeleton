@@ -29,7 +29,7 @@ class TestRouteToolCall:
         result = route_tool_call('gmail.send', arguments)
         
         # Assert
-        mock_gmail_send.assert_called_once_with(arguments)
+        mock_gmail_send.assert_called_once_with(arguments, None)
         assert result["success"] is True
         assert result["message"] == "Email sent"
     
@@ -52,7 +52,7 @@ class TestRouteToolCall:
         result = route_tool_call('pushover.send', arguments)
         
         # Assert
-        mock_pushover_send.assert_called_once_with(arguments)
+        mock_pushover_send.assert_called_once_with(arguments, None)
         assert result["success"] is True
         assert result["message"] == "Notification sent"
     

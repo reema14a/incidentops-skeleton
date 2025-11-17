@@ -9,18 +9,81 @@ with a simple local HTTP endpoint.
 
 import logging
 import json
+import os
 from typing import Any, Dict, Optional
 from flask import Flask, request, jsonify
+from logging.handlers import RotatingFileHandler
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='[%(asctime)s] [%(name)s] [%(levelname)s] %(message)s'
-)
-logger = logging.getLogger("LocalMCPServer")
+# Configure logging to both console and file
+def setup_logging() -> logging.Logger:
+    """Configure logging for MCP server with console and file handlers.
+    
+    Returns:
+        logging.Logger: Configured logger instance.
+    """
+    logger = logging.getLogger("LocalMCPServer")
+    logger.setLevel(logging.INFO)
+    
+    # Prevent duplicate handlers
+    if logger.handlers:
+        return logger
+    
+    # Create logs directory if it doesn't exist
+    log_dir = 'logs'
+    os.makedirs(log_dir, exist_ok=True)
+    
+    # Format for log messages
+    log_format = '[%(asctime)s] [%(name)s] [%(levelname)s] %(message)s'
+    formatter = logging.Formatter(log_format)
+    
+    # Console handler
+    console_handler = logging.StreamHandler()
+    console_handler.setLevel(logging.INFO)
+    console_handler.setFormatter(formatter)
+    logger.addHandler(console_handler)
+    
+    # File handler with rotation
+    file_handler = RotatingFileHandler(
+        os.path.join(log_dir, 'mcp_server.log'),
+        maxBytes=10 * 1024 * 1024,  # 10 MB
+        backupCount=5
+    )
+    file_handler.setLevel(logging.INFO)
+    file_handler.setFormatter(formatter)
+    logger.addHandler(file_handler)
+    
+    return logger
+
+logger = setup_logging()
 
 # Initialize Flask app
 app = Flask(__name__)
+
+
+def _redact_secrets(arguments: Dict[str, Any]) -> Dict[str, Any]:
+    """Redact sensitive information from arguments for safe logging.
+    
+    Args:
+        arguments: Tool arguments that may contain secrets.
+        
+    Returns:
+        dict: Arguments with secrets redacted.
+    """
+    # List of field names that should be redacted
+    secret_fields = {
+        'password', 'token', 'api_key', 'secret', 'key',
+        'user_key', 'app_password', 'credentials'
+    }
+    
+    safe_args = {}
+    for key, value in arguments.items():
+        # Check if field name suggests it contains a secret
+        if any(secret in key.lower() for secret in secret_fields):
+            safe_args[key] = '[REDACTED]'
+        else:
+            safe_args[key] = value
+    
+    return safe_args
 
 
 class JSONRPCError:
@@ -157,20 +220,33 @@ def handle_send() -> Any:
     # Extract tool arguments
     tool_arguments = params.get('arguments', {})
     
-    # Log request (without secrets)
-    logger.info(f"Request ID: {request_id}, Tool: {tool_name}")
+    # Redact secrets from arguments for logging
+    safe_arguments = _redact_secrets(tool_arguments)
+    
+    # Log request start (without secrets)
+    logger.info(
+        f"[request_id={request_id}] [tool={tool_name}] [status=started] "
+        f"Tool execution started with arguments: {safe_arguments}"
+    )
     
     # Route to tool implementation
     try:
         from llm.local_mcp.router import route_tool_call
         
-        result = route_tool_call(tool_name, tool_arguments)
+        result = route_tool_call(tool_name, tool_arguments, request_id)
         
-        logger.info(f"Request ID: {request_id} completed successfully")
+        logger.info(
+            f"[request_id={request_id}] [tool={tool_name}] [status=success] "
+            f"Tool execution completed successfully"
+        )
         return jsonify(create_success_response(request_id, result)), 200
         
     except ImportError as e:
-        logger.error(f"Failed to import router: {e}")
+        logger.error(
+            f"[request_id={request_id}] [tool={tool_name}] [status=failure] "
+            f"Failed to import router: {e}",
+            exc_info=True
+        )
         return jsonify(JSONRPCError.create_error_response(
             request_id,
             *JSONRPCError.INTERNAL_ERROR,
@@ -178,7 +254,11 @@ def handle_send() -> Any:
         )), 500
     except ValueError as e:
         # Tool not found or invalid parameters
-        logger.error(f"Tool error: {e}")
+        logger.error(
+            f"[request_id={request_id}] [tool={tool_name}] [status=failure] "
+            f"Tool error: {e}",
+            exc_info=True
+        )
         return jsonify(JSONRPCError.create_error_response(
             request_id,
             *JSONRPCError.INVALID_PARAMS,
@@ -186,7 +266,11 @@ def handle_send() -> Any:
         )), 400
     except Exception as e:
         # Internal tool execution error
-        logger.error(f"Tool execution failed: {e}", exc_info=True)
+        logger.error(
+            f"[request_id={request_id}] [tool={tool_name}] [status=failure] "
+            f"Tool execution failed: {e}",
+            exc_info=True
+        )
         return jsonify(JSONRPCError.create_error_response(
             request_id,
             *JSONRPCError.INTERNAL_ERROR,

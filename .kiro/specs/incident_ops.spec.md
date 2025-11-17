@@ -62,6 +62,8 @@ Pipeline order:
   - Loop through enabled channels
   - Call MCPClient.call_tool(tool_name, params)
   - Build params from the pipeline summary, severity, and governance outputs
+  - Use dependency injection so tests can provide a mocked MCPClient.
+
 
 # Data Flow
 

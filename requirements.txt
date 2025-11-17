@@ -4,6 +4,7 @@ pyyaml
 pytest
 requests
 openai
+flask
 
 # Optional for later visualization or UI
 gradio
