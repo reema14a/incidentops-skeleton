@@ -160,6 +160,15 @@ If the response cannot be parsed as JSON:
 - File logging must use a rotating handler.
 - No agent must write directly using print() except BaseAgent.log().
 
+## Database access standard
+
+- Use a single SQLite connection per request/context
+- Wrap all writes in transactions
+- Use prepared statements (parameterized queries)
+- Avoid raw SQL strings inside business logic
+- Use descriptive, JSON-safe formats for TEXT fields
+
+
 ## Configuration Access Policy
 
 All configuration access must go through the centralized `config.settings_loader` module.

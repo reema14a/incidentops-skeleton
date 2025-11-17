@@ -11,6 +11,10 @@ paths:
   data_dir: ${DATA_DIR}
   output_log: ${OUTPUT_LOG_PATH}
 
+# Database configuration
+database:
+  path: ${DB_PATH}
+
 # Notification configuration
 notification:
   mcp:

@@ -25,10 +25,10 @@ def get_output_log_path() -> Path:
     Get the path to the output log file.
     
     Returns:
-        Path: Path object pointing to data/output_log.json
+        Path: Path object pointing to data/output/output_log.json
     """
     project_root = Path(__file__).parent.parent.parent
-    return project_root / "data" / "output_log.json"
+    return project_root / "data" / "output" / "output_log.json"
 
 
 def load_pipeline_history() -> List[Dict[str, Any]]:

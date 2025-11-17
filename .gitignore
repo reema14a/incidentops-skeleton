@@ -9,7 +9,8 @@ scripts/
 .env
 
 .venv/
-data/output_log.json
+data/output/
+data/db/*.db
 
 .kiro/cache/
 .kiro/tmp/

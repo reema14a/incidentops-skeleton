@@ -41,4 +41,6 @@ python -c "from orchestrator.orchestrator import run_pipeline; run_pipeline()"
 
 - **MCP Hooks** - Used for log parsing and alert simulation
 - **JSON logs** - Output format for governance and traceability
-- Output logs stored in `data/output_log.json` (configurable in settings.yaml)
+- Output logs stored in `data/output/output_log.json` (configurable in settings.yaml)
+- Database files stored in `data/db/` (SQLite)
+- Sample input files in `data/samples/`

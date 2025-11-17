@@ -9,17 +9,22 @@ inclusion: always
 ```
 ├── agents/           # Agent implementations
 ├── config/           # YAML configuration files
-├── data/             # Sample data and output logs
+├── data/             # Data directory
+    └── db/           # Persistent database files (SQLite)
+    └── samples/      # Sample input logs, demo logs
+    └── output/       # Optional pipeline output dumps
+├── db/               # Database utilities
 ├── hooks/            # MCP integration hooks
 ├── llm/              # LLM files
     └── local_mcp/    # Local MCP server
     └── mcp_client/   # MCP client 
+├── logs/             # Runtime logs (pipeline.log, mcp_server.log)
 ├── orchestrator/     # Pipeline orchestration logic
 ├── tests/            
     └── unit/         # Pure unit tests for individual agents
     └── integration/  # Multi-agent flows and full pipeline tests 
 ├── ui/               # User interface (console client)
-└── util/             # Shared utilities
+└── utils/            # Shared utilities
 
 ```
 
@@ -111,9 +116,41 @@ Rules:
 utils/json_parser.py
 ```
 
+## Data Directory Structure
+
+### data/db/
+Persistent database files (SQLite):
+- `incidents.db` - Main incident storage
+- Other persistent data stores
+
+### data/samples/
+Sample input files for testing and demonstration:
+- `sample_logs.txt` - Example log entries
+- Other demo/test input files
+
+### data/output/
+Optional pipeline output dumps:
+- `output_log.json` - JSON output from pipeline runs
+- Other generated artifacts
+
 ## Logging Structure
-All runtime logs must be written to:
+All runtime logs are written to the `logs/` directory at project root:
 ```
-logs/pipeline.log
+logs/pipeline.log      # Agent pipeline execution logs
+logs/mcp_server.log    # MCP server logs
 ```
-The logs directory is located at the project root and stores all pipeline logs for debugging, audit, and demonstration.
+
+**Log Path Configuration:**
+- Pipeline logs: Hardcoded in `agents/base_agent.py` (line ~30)
+- MCP server logs: Hardcoded in `llm/local_mcp/server.py`
+- Log directory is created automatically if it doesn't exist
+- Uses rotating file handlers (5MB max, 3 backups)
+
+**Note**: Runtime logs are kept at project root (not under `data/`) following common conventions. This separates transient runtime logs from persistent data.
+
+## Database Storage
+- Database files stored in `data/db/`
+- Avoid inline SQL anywhere outside `db/db_util.py`
+- If a spec defines a storage layer, only that module may interact with the database
+- All DB writes must go through the DB utility module
+- Kiro must never generate DB write/SQL code inside agents directly

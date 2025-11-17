@@ -33,7 +33,7 @@ class OpsLogAgent(BaseAgent):
         # Use settings_loader for output path if not explicitly provided
         if output_path is None:
             settings = get_settings()
-            self.output_path = settings.paths.output_log if hasattr(settings, 'paths') and hasattr(settings.paths, 'output_log') else 'data/output_log.json'
+            self.output_path = settings.paths.output_log if hasattr(settings, 'paths') and hasattr(settings.paths, 'output_log') else 'data/output/output_log.json'
         else:
             self.output_path = output_path
     

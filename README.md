@@ -81,7 +81,16 @@ cp .env.example .env
 # Edit .env with your API keys and settings
 ```
 
-**Step 3:** Run the pipeline
+**Step 3:** Initialize directories
+The project uses the following directory structure:
+- `data/db/` - Persistent database files (SQLite)
+- `data/samples/` - Sample input logs for testing
+- `data/output/` - Pipeline output dumps
+- `logs/` - Runtime logs (pipeline.log, mcp_server.log) at project root
+
+These directories are created automatically on first run.
+
+**Step 4:** Run the pipeline
 
 **Option A: CLI Mode**
 ```bash
@@ -131,7 +140,11 @@ Direct access to environment variables or YAML files is prohibited. See `docs/co
 
 **Validation:**
 ```bash
+# Validate configuration access patterns
 python3 scripts/validate_config_access.py
+
+# Verify data directory structure
+python3 -m scripts.verify_data_structure
 ```
 
 ---

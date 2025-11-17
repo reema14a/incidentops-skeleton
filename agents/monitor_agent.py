@@ -16,7 +16,7 @@ class MonitorAgent(BaseAgent):
         if log_path is None:
             settings = get_settings()
             data_dir = settings.paths.data_dir if hasattr(settings, 'paths') and hasattr(settings.paths, 'data_dir') else 'data'
-            self.log_path = os.path.join(data_dir, 'sample_logs.txt')
+            self.log_path = os.path.join(data_dir, 'samples', 'sample_logs.txt')
         else:
             self.log_path = log_path
         self.alert_patterns = {
