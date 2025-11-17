@@ -1,10 +1,11 @@
-venv/
 __pycache__/
 *.log
 *.pyc
 demo/
+docs/
 examples/
 logs/
+scripts/
 .env
 
 .venv/
@@ -15,3 +16,6 @@ data/output_log.json
 .kiro/history/
 .DS_Store
 .vscode/settings.json
+
+# Streamlit
+.streamlit/

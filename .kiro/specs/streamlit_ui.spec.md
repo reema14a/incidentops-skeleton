@@ -136,11 +136,12 @@ ui/
 
 > Create these only when this phase starts.
 
-* [ ] Create `ui/pages/Audit_Logs.py`
-* [ ] Implement viewer for `logs/pipeline.log`
-* [ ] Add real-time log streaming (polling)
-* [ ] Add log formatting + truncation
-* [ ] Handle missing or empty log file gracefully
+* [x] Create `ui/pages/Audit_Logs.py`
+* [x] Implement viewer for `logs/pipeline.log`
+* [x] Add real-time log streaming (polling)
+* [x] Add log formatting + truncation
+* [x] Handle missing or empty log file gracefully
+* [x] Add link after View Logs  section to go back to Top (since View Log section could be long)
 
 ---
 
