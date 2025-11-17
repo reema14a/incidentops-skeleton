@@ -1,14 +1,10 @@
 from openai import OpenAI
-import os
 import json
 import logging
 import time
 from logging.handlers import RotatingFileHandler
-from dotenv import load_dotenv
 from utils.json_parser import extract_json_block
-
-# Load .env variables into environment
-load_dotenv()
+from config.settings_loader import get_settings
 
 
 class OpenAIClient:
@@ -48,8 +44,11 @@ class OpenAIClient:
             return
             
         self.model = model
-        self.api_key = os.getenv("OPENAI_API_KEY")
-        use_real = os.getenv("USE_REAL_OPENAI", "false").lower() == "true"
+        
+        # Use settings_loader instead of direct env access
+        settings = get_settings()
+        self.api_key = settings.get_secret('OPENAI_API_KEY')
+        use_real = settings.llm.use_real_openai
         self.enabled = bool(self.api_key and use_real)
         
         self._setup_logging()
@@ -69,6 +68,7 @@ class OpenAIClient:
             return
         
         # Create logs directory if it doesn't exist
+        import os
         log_dir = "logs"
         if not os.path.exists(log_dir):
             os.makedirs(log_dir)

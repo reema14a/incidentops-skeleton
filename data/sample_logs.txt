@@ -1,6 +1,25 @@
-2025-11-10 10:01:03 ERROR Database connection timeout
-2025-11-10 10:02:47 WARNING Memory threshold exceeded
-2025-11-10 10:05:12 INFO System startup complete
-2025-11-10 10:07:33 ERROR Failed to write to disk: /var/log/app.log
-2025-11-10 10:09:15 WARNING CPU usage at 85%
-2025-11-10 10:12:01 INFO Request processed successfully
+# Sample logs demonstrating high-severity incidents that trigger notifications
+# These logs simulate a critical system outage scenario with multiple ERROR-level events
+# Expected behavior: LLMGovernanceAgent should classify as HIGH or CRITICAL risk
+# Expected outcome: NotificationAgent should send alerts via configured channels
+
+2025-11-17 10:01:03 ERROR Database connection timeout after 30 seconds
+2025-11-17 10:02:15 ERROR Database connection pool exhausted - max connections reached
+2025-11-17 10:02:47 WARNING Memory threshold exceeded - 85% utilization
+2025-11-17 10:03:22 ERROR Failed to execute query: connection lost to primary database
+2025-11-17 10:04:01 ERROR Authentication service unreachable - timeout after 10 seconds
+2025-11-17 10:05:12 INFO System startup complete
+2025-11-17 10:06:45 ERROR Critical: Payment processing service down - transactions failing
+2025-11-17 10:07:33 ERROR Failed to write to disk: /var/log/app.log - disk full
+2025-11-17 10:08:19 ERROR API gateway returning 503 - service unavailable
+2025-11-17 10:09:15 WARNING CPU usage at 85% - approaching critical threshold
+2025-11-17 10:10:02 ERROR Cache cluster connection failed - Redis timeout
+2025-11-17 10:11:30 ERROR Message queue overflow - 10000+ messages pending
+2025-11-17 10:12:01 INFO Request processed successfully
+2025-11-17 10:13:45 WARNING Disk space low on /var partition - 90% full
+2025-11-17 10:14:22 ERROR Load balancer health check failed for 3 backend servers
+
+# Summary: 10 ERROR events, 3 WARNING events
+# This volume and severity should trigger HIGH or CRITICAL risk classification
+# With USE_REAL_OPENAI=true, the LLM will analyze these logs and determine appropriate risk level
+# With USE_REAL_OPENAI=false (mock mode), the system uses fallback risk assessment

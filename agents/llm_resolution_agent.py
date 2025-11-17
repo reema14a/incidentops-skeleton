@@ -3,7 +3,6 @@ LLMResolutionAgent uses an LLM to generate resolution plans and remediation summ
 This agent sits between TriageAgent and OpsLogAgent in the pipeline.
 """
 import json
-import yaml
 from typing import List, Dict, Any
 from agents.base_agent import BaseAgent
 from llm.openai_client import OpenAIClient
@@ -30,19 +29,15 @@ class LLMResolutionAgent(BaseAgent):
     
     def _load_prompt_template(self) -> str:
         """
-        Load the resolution prompt template from config/prompts.yaml.
+        Load the resolution prompt template from prompts.yaml.
         
         Returns:
             str: Prompt template string
         """
-        try:
-            with open('config/prompts.yaml', 'r') as f:
-                prompts = yaml.safe_load(f)
-                return prompts.get('resolution_prompt', '')
-        except Exception as e:
-            self.log(f"Warning: Could not load prompt template: {e}")
-            # Fallback prompt
-            return """You are an AI incident resolution assistant. Given these triaged alerts (JSON):
+        from utils.prompt_loader import load_prompt
+        
+        # Fallback prompt
+        default_prompt = """You are an AI incident resolution assistant. Given these triaged alerts (JSON):
 {alerts}
 
 Analyze each alert and provide a JSON object with:
@@ -57,6 +52,8 @@ Analyze each alert and provide a JSON object with:
 - summary: short readable summary for on-call
 - escalation: suggested escalation paths
 - affected_systems: list of affected systems"""
+        
+        return load_prompt('resolution_prompt', default_prompt)
 
     
     def run(self, input_data: List[Dict]) -> Dict[str, Any]:

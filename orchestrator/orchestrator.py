@@ -8,6 +8,7 @@ This module ensures strict sequential data flow across all agents:
 4. LLMResolutionAgent → resolution plans with LLM-generated recommendations and summary
 5. OpsLogAgent → audit summary (dict with status, count, timestamp)
 6. LLMGovernanceAgent → governance analysis (risk scoring, escalation, compliance)
+7. NotificationAgent → notification delivery status (sends alerts via MCP)
 
 Each stage validates input/output data structures to prevent invalid data flow.
 Pipeline execution stops immediately if any validation fails.
@@ -19,6 +20,7 @@ from agents.triage_agent import TriageAgent
 from agents.llm_resolution_agent import LLMResolutionAgent
 from agents.opslog_agent import OpsLogAgent
 from agents.llm_governance_agent import LLMGovernanceAgent
+from agents.notification_agent import NotificationAgent
 
 
 class PipelineExecutor:
@@ -35,7 +37,8 @@ class PipelineExecutor:
             'triage': TriageAgent("TriageAgent"),
             'llm_resolution': LLMResolutionAgent("LLMResolutionAgent"),
             'opslog': OpsLogAgent("OpsLogAgent"),
-            'governance': LLMGovernanceAgent("LLMGovernanceAgent")
+            'governance': LLMGovernanceAgent("LLMGovernanceAgent"),
+            'notification': NotificationAgent("NotificationAgent")
         }
         self.execution_log = []
     
@@ -234,6 +237,32 @@ class PipelineExecutor:
         
         return data
     
+    def _validate_notification_output(self, data: Any) -> Dict:
+        """
+        Validate NotificationAgent output structure.
+        
+        Args:
+            data: Output from NotificationAgent
+            
+        Returns:
+            Dict: Validated output with governance_output, notification_status, and notifications_sent
+            
+        Raises:
+            ValueError: If data structure is invalid
+        """
+        if not isinstance(data, dict):
+            raise ValueError(f"NotificationAgent must return a dict, got {type(data).__name__}")
+        
+        required_fields = ['governance_output', 'notification_status', 'notifications_sent']
+        missing_fields = [field for field in required_fields if field not in data]
+        if missing_fields:
+            raise ValueError(f"NotificationAgent output missing required fields: {missing_fields}")
+        
+        if not isinstance(data['notifications_sent'], list):
+            raise ValueError(f"NotificationAgent 'notifications_sent' must be a list, got {type(data['notifications_sent']).__name__}")
+        
+        return data
+    
     def run(self) -> Dict:
         """
         Execute the complete pipeline with strict sequential data flow.
@@ -281,6 +310,12 @@ class PipelineExecutor:
             governance_output = self._validate_governance_output(governance_output)
             self._log_stage('LLMGovernanceAgent', 'completed', 1)
             
+            # Stage 7: Notification (depends on Governance output)
+            self._log_stage('NotificationAgent', 'started')
+            notification_output = self.agents['notification'].run(governance_output)
+            notification_output = self._validate_notification_output(notification_output)
+            self._log_stage('NotificationAgent', 'completed', len(notification_output['notifications_sent']))
+            
             # Pipeline complete
             print(f"\n{'='*60}")
             print(f"✅ Pipeline completed successfully")
@@ -291,8 +326,11 @@ class PipelineExecutor:
             print(f"  Escalation: {governance_output['governance_analysis']['escalation']}")
             if governance_output['governance_analysis']['compliance_issues']:
                 print(f"  Compliance Issues: {governance_output['governance_analysis']['compliance_issues']}")
+            print(f"Notification Status: {notification_output['notification_status']}")
+            if notification_output['notifications_sent']:
+                print(f"  Notifications Sent: {len(notification_output['notifications_sent'])}")
             
-            return governance_output
+            return notification_output
             
         except ValueError as e:
             print(f"\n❌ Pipeline failed: Data validation error")

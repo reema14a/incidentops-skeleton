@@ -2,6 +2,7 @@ import os
 import re
 from datetime import datetime
 from agents.base_agent import BaseAgent
+from config.settings_loader import get_settings
 
 class MonitorAgent(BaseAgent):
     """
@@ -9,9 +10,15 @@ class MonitorAgent(BaseAgent):
     Reads from log files and detects ERROR and WARNING level messages.
     """
     
-    def __init__(self, name, log_path="data/sample_logs.txt"):
+    def __init__(self, name, log_path=None):
         super().__init__(name)
-        self.log_path = log_path
+        # Use settings_loader for log path if not explicitly provided
+        if log_path is None:
+            settings = get_settings()
+            data_dir = settings.paths.data_dir if hasattr(settings, 'paths') and hasattr(settings.paths, 'data_dir') else 'data'
+            self.log_path = os.path.join(data_dir, 'sample_logs.txt')
+        else:
+            self.log_path = log_path
         self.alert_patterns = {
             'ERROR': r'ERROR\s+(.+)',
             'WARNING': r'WARNING\s+(.+)'

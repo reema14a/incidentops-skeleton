@@ -159,3 +159,67 @@ If the response cannot be parsed as JSON:
 - BaseAgent.log() must write to both console and file.
 - File logging must use a rotating handler.
 - No agent must write directly using print() except BaseAgent.log().
+
+## Configuration Access Policy
+
+All configuration access must go through the centralized `config.settings_loader` module.
+
+### ✅ REQUIRED Pattern
+
+```python
+from config.settings_loader import get_settings
+
+settings = get_settings()
+value = settings.get_my_setting()
+```
+
+### ❌ PROHIBITED Patterns
+
+The following patterns are **strictly prohibited** in all application code:
+
+1. **Direct environment variable access**:
+   ```python
+   # ❌ WRONG
+   import os
+   api_key = os.getenv('OPENAI_API_KEY')
+   endpoint = os.environ['MCP_ENDPOINT']
+   ```
+
+2. **Direct YAML file reading**:
+   ```python
+   # ❌ WRONG
+   import yaml
+   with open('config/settings.yaml', 'r') as f:
+       config = yaml.safe_load(f)
+   ```
+
+3. **Direct .env file loading**:
+   ```python
+   # ❌ WRONG
+   from dotenv import load_dotenv
+   load_dotenv()
+   ```
+
+### Exemptions
+
+Only the following files may access configuration directly:
+- `config/settings_loader.py` (the centralized configuration module)
+- `tests/unit/test_settings_loader.py` (tests for the settings loader)
+
+### Validation
+
+Run the validation script to check for violations:
+```bash
+python3 scripts/validate_config_access.py
+```
+
+### Rationale
+
+- **Single Source of Truth**: All configuration logic in one place
+- **Priority Management**: Enforces env vars > YAML > defaults
+- **Security**: Secrets must come from environment variables only
+- **Validation**: Configuration values validated in one place
+- **Testability**: Easy to mock/override configuration
+- **Consistency**: All code uses the same interface
+
+See `docs/configuration_enforcement.md` for complete details.

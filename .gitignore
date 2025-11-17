@@ -3,6 +3,8 @@ __pycache__/
 *.log
 *.pyc
 demo/
+docs/
+examples/
 .env
 
 .venv/

@@ -3,7 +3,6 @@ LLMAlertSummaryAgent uses an LLM to generate human-friendly summaries of alert e
 This agent sits between MonitorAgent and TriageAgent in the pipeline.
 """
 import json
-import yaml
 from typing import List, Dict, Any
 from agents.base_agent import BaseAgent
 from llm.openai_client import OpenAIClient
@@ -29,19 +28,15 @@ class LLMAlertSummaryAgent(BaseAgent):
     
     def _load_prompt_template(self) -> str:
         """
-        Load the alert summary prompt template from config/prompts.yaml.
+        Load the alert summary prompt template from prompts.yaml.
         
         Returns:
             str: Prompt template string
         """
-        try:
-            with open('config/prompts.yaml', 'r') as f:
-                prompts = yaml.safe_load(f)
-                return prompts.get('alert_summary_prompt', '')
-        except Exception as e:
-            self.log(f"Warning: Could not load prompt template: {e}")
-            # Fallback prompt
-            return """You are an AI alert summarizer. Analyze the following alerts (JSON list):
+        from utils.prompt_loader import load_prompt
+        
+        # Fallback prompt
+        default_prompt = """You are an AI alert summarizer. Analyze the following alerts (JSON list):
 {alerts}
 
 Provide a JSON object with:
@@ -49,6 +44,8 @@ Provide a JSON object with:
 - categories: list of top categories
 - severity_breakdown: mapping of severity->count
 - root_causes: list of likely root causes"""
+        
+        return load_prompt('alert_summary_prompt', default_prompt)
     
     def run(self, input_data: List[Dict]) -> Dict[str, Any]:
         """

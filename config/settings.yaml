@@ -1,7 +1,25 @@
+# Runtime configuration
+# All values use ${VAR} syntax for environment variable interpolation
+# If env var is not set, the value will be None - ensure all required vars are set in .env
 runtime:
-  log_level: INFO
-  enable_hooks: true
-  save_output: true
+  log_level: ${LOG_LEVEL}
+  enable_hooks: ${ENABLE_HOOKS}
+  save_output: ${SAVE_OUTPUT}
+
+# Path configuration
 paths:
-  data_dir: "data/"
-  output_log: "data/output_log.json"
+  data_dir: ${DATA_DIR}
+  output_log: ${OUTPUT_LOG_PATH}
+
+# Notification configuration
+notification:
+  mcp:
+    endpoint: ${MCP_ENDPOINT}
+    timeout: ${MCP_TIMEOUT}
+    max_retries: ${MCP_MAX_RETRIES}
+    retry_delay: ${MCP_RETRY_DELAY}
+  channels: ${NOTIFICATION_CHANNELS}
+
+# LLM configuration
+llm:
+  use_real_openai: ${USE_REAL_OPENAI}

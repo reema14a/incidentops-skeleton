@@ -2,6 +2,7 @@ import json
 import os
 from datetime import datetime
 from agents.base_agent import BaseAgent
+from config.settings_loader import get_settings
 
 class OpsLogAgent(BaseAgent):
     """
@@ -20,16 +21,21 @@ class OpsLogAgent(BaseAgent):
     All interpretive logic belongs in LLMGovernanceAgent.
     """
     
-    def __init__(self, name, output_path="data/output_log.json"):
+    def __init__(self, name, output_path=None):
         """
         Initialize OpsLogAgent with output path.
         
         Args:
             name (str): Agent name for logging
-            output_path (str): Path to output JSON log file
+            output_path (str): Path to output JSON log file (optional, uses settings if not provided)
         """
         super().__init__(name)
-        self.output_path = output_path
+        # Use settings_loader for output path if not explicitly provided
+        if output_path is None:
+            settings = get_settings()
+            self.output_path = settings.paths.output_log if hasattr(settings, 'paths') and hasattr(settings.paths, 'output_log') else 'data/output_log.json'
+        else:
+            self.output_path = output_path
     
     def run(self, resolution_plans):
         """

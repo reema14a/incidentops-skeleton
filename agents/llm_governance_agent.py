@@ -3,7 +3,6 @@ LLMGovernanceAgent uses an LLM to perform risk scoring, escalation checks, and c
 This agent sits after OpsLogAgent as the final stage in the pipeline.
 """
 import json
-import yaml
 from typing import Dict, Any
 from agents.base_agent import BaseAgent
 from llm.openai_client import OpenAIClient
@@ -30,19 +29,15 @@ class LLMGovernanceAgent(BaseAgent):
     
     def _load_prompt_template(self) -> str:
         """
-        Load the governance prompt template from config/prompts.yaml.
+        Load the governance prompt template from prompts.yaml.
         
         Returns:
             str: Prompt template string
         """
-        try:
-            with open('config/prompts.yaml', 'r') as f:
-                prompts = yaml.safe_load(f)
-                return prompts.get('governance_prompt', '')
-        except Exception as e:
-            self.log(f"Warning: Could not load prompt template: {e}")
-            # Fallback prompt
-            return """You are an AI governance and compliance auditor. Analyze the following final log summary (JSON):
+        from utils.prompt_loader import load_prompt
+        
+        # Fallback prompt
+        default_prompt = """You are an AI governance and compliance auditor. Analyze the following final log summary (JSON):
 {log}
 
 Provide a JSON object with:
@@ -50,6 +45,8 @@ Provide a JSON object with:
 - escalation: recommended escalation action
 - compliance_issues: list (if any)
 - commentary: short audit commentary"""
+        
+        return load_prompt('governance_prompt', default_prompt)
     
     def run(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
         """
