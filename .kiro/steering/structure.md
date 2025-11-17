@@ -11,6 +11,9 @@ inclusion: always
 ├── config/           # YAML configuration files
 ├── data/             # Sample data and output logs
 ├── hooks/            # MCP integration hooks
+├── llm/              # LLM files
+    └── local_mcp/    # Local MCP server
+    └── mcp_client/   # MCP client 
 ├── orchestrator/     # Pipeline orchestration logic
 ├── tests/            
     └── unit/         # Pure unit tests for individual agents
@@ -61,13 +64,44 @@ Hooks in `hooks/` directory provide external integrations:
 
 ```
 tests/             # Unit and integration tests for agents, hooks, orchestrator
+  unit/            # Pure unit tests for individual agents
+    test_monitor.py
+    test_triage.py
+    test_llm_alert_summary.py
+    test_llm_resolution.py
+    test_llm_governance.py
+    test_notification.py
+    test_opslog.py
+    test_orchestrator.py
+    test_settings_loader.py
+    test_config_validation.py
+    test_notification_mcp_errors.py
+  integration/     # Multi-agent flows and full pipeline tests
+    test_monitor_to_llm_summary.py
+    test_notification_pipeline_integration.py
+  mcp_client/      # MCP client tests
+    test_basic_success.py
+  local_mcp_server/  # Local MCP server tests
+    test_router.py
+    test_gmail_tool.py
+    test_pushover_tool.py
+    test_jsonrpc_compliance.py
+  e2e/             # End-to-end full pipeline tests
+    test_full_roundtrip.py
+    test_notification_delivery_e2e.py
+
 ```
 Rules: 
 - Kiro should place all permanent test files here.  
 - Temporary validation tests created during task execution should be retained as real tests under this directory.
 - Kiro must generate unit tests inside tests/unit/.
 - Kiro must generate integration tests inside tests/integration/.
+- Kiro must generate MCP client tests inside tests/mcp_client/.
+- Kiro must generate local MCP server tests inside tests/local_mcp_server/.
+- Kiro must generate end-to-end pipeline tests inside tests/e2e/.
 - Unit tests must not perform file I/O or run the pipeline.
+- Integration tests may exercise pipeline execution or multi-agent flows.
+- E2E tests should test the complete system from end to end.
 - Integration tests may exercise pipeline execution or multi-agent flows.
 
 ## Shared Utilities

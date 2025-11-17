@@ -75,7 +75,13 @@ IncidentOps Skeleton integrates lightweight governance principles:
 **Step 1:** Install dependencies
 `pip install -r requirements.txt`
 
-**Step 2:** Run the basic flow
+**Step 2:** Configure environment variables (optional)
+```bash
+cp .env.example .env
+# Edit .env with your API keys and settings
+```
+
+**Step 3:** Run the basic flow
 `python ui/console_client.py`
 
 **Sample output:**
@@ -86,6 +92,38 @@ IncidentOps Skeleton integrates lightweight governance principles:
 [⚡ ResolutionAgent] Suggested: Restart DB service
 
 [🎃 OpsLogAgent] Incident logged successfully.
+
+---
+
+## ⚙️ Configuration
+
+IncidentOps uses a centralized configuration system with priority-based resolution:
+
+1. **Environment Variables** (highest priority) - Set in `.env` or system environment
+2. **YAML Configuration** - Defined in `config/settings.yaml`
+3. **Secure Defaults** (lowest priority) - Built-in fallback values
+
+**Key Configuration Files:**
+- `config/settings.yaml` - Runtime settings, paths, log levels
+- `config/prompts.yaml` - LLM prompt templates
+- `.env` - Secrets and environment-specific settings (not committed to git)
+
+**Configuration Policy:**
+All code must access configuration through `config.settings_loader`:
+
+```python
+from config.settings_loader import get_settings
+
+settings = get_settings()
+api_key = settings.get_openai_api_key()
+```
+
+Direct access to environment variables or YAML files is prohibited. See `docs/configuration_enforcement.md` for details.
+
+**Validation:**
+```bash
+python3 scripts/validate_config_access.py
+```
 
 ---
 

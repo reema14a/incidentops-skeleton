@@ -5,6 +5,7 @@ __pycache__/
 demo/
 docs/
 examples/
+scripts/
 .env
 
 .venv/
