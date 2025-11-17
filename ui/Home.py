@@ -31,7 +31,7 @@ Navigate using the sidebar to access:
 - **Pipeline Runner** - Execute the incident management pipeline with log input
 - **Audit Logs** - View pipeline execution logs
 - **Dashboards** - Visualize incident metrics and trends
-- **Governance** - Review risk scores and compliance *(Coming Soon)*
+- **Governance** - Review risk scores and compliance
 - **Notifications** - Monitor notification channels and delivery status *(Coming Soon)*
 
 ### Getting Started

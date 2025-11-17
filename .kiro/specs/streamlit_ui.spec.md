@@ -163,7 +163,7 @@ ui/
 
 ## **Phase 4 — Governance**
 
-* [ ] Create `ui/pages/Governance.py`
+* [x] Create `ui/pages/Governance.py`
 * [ ] Display risk score
 * [ ] Display escalation decision
 * [ ] Display compliance issues
