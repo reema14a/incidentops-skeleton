@@ -16,7 +16,9 @@ Pipeline order:
 4. LLMResolutionAgent – Generate AI-based remediation guidance.
 5. OpsLogAgent – Produce factual audit logs with no interpretation.
 6. LLMGovernanceAgent – Perform risk scoring, escalation, compliance.
-7. NotificationAgent – Send alerts via MCP (email, push, etc.).
+7. GovernanceInsightsAgent – Analyze historical DB trends and patterns.
+8. NotificationAgent – Send alerts via MCP (email, push, etc.).
+
 
 # Functional Requirements
 
@@ -46,6 +48,14 @@ Pipeline order:
 - Add compliance and SLA implications.
 - Output: `governance_result`.
 
+## GovernanceInsightsAgent (AI, NEW)
+- Analyzes historical governance data stored in the DB.
+- Aggregation is performed by DB utility functions; the agent only interprets aggregated data.
+<!-- - Inputs: get_governance_history(), get_pipeline_runs(), get_compliance_stats(), get_category_distribution(), get_severity_distribution(). -->
+- Inputs: get_risk_trend(), get_compliance_trend(), get_escalation_text_counts(), get_recent_runs(),get_category_distribution(), get_severity_distribution()
+- Outputs JSON with: trend_summary, risk_trend, compliance_trend, recurring_issues, category_hotspots, recommendations, anomaly_detection.
+- Runs after GovernanceAgent and before NotificationAgent.
+
 ## Notifications
 - Use MCP tools to send notifications.
 - Trigger only when escalation or governance criteria require it.
@@ -67,7 +77,8 @@ Pipeline order:
 
 # Data Flow
 
-`logs → MonitorAgent → LLMAlertSummaryAgent → TriageAgent → LLMResolutionAgent → OpsLogAgent → LLMGovernanceAgent → NotificationAgent`
+`logs → MonitorAgent → LLMAlertSummaryAgent → TriageAgent → LLMResolutionAgent
+→ OpsLogAgent → LLMGovernanceAgent → GovernanceInsightsAgent → NotificationAgent`
 
 # Tasks
 
@@ -79,19 +90,27 @@ Pipeline order:
 - [x] OpsLogAgent
 - [x] LLMGovernanceAgent
 
+---
+
 ## Refactor Tasks
 - [x] Remove legacy rule-based ResolutionAgent.
 - [x] Validate separation between OpsLogAgent and GovernanceAgent.
 - [x] Move openai_client.py into `llm/` and update imports.
+
+---
 
 ## Logging Tasks
 - [x] Update BaseAgent.log() to log to console + `logs/pipeline.log`.
 - [x] Create logs/ directory.
 - [x] Add rotating file handler (5MB, keep 3 backups).
 
+---
+
 ## LLM Logging Tasks
 - [x] Add structured logging to llm/openai_client.py (metadata, parsing, errors).
 - [x] Ensure failures propagate to pipeline.log.
+
+---
 
 ## Settings Loader Tasks
 - [x] Create `config/settings_loader.py`.
@@ -111,10 +130,21 @@ Pipeline order:
       - Do not enforce or convert WebSocket protocol.
       - Pass endpoint to MCPClient unchanged.
 
+---
+
 ## Notification Tasks
 - [x] Implement NotificationAgent using MCPClient.
 - [x] Insert into pipeline after GovernanceAgent. NotificationAgent must gracefully handle tool failures via MCPToolError and log them without stopping the pipeline.
 - [x] Add end-to-end test for notification delivery.
+
+---
+
+## GovernanceInsightsAgent Tasks (Phase 2)
+- [ ] Implement GovernanceInsightsAgent (LLM-based historical analysis)
+- [ ] Add orchestrator step after LLMGovernanceAgent
+- [ ] Orchestrator must call new DB aggregation APIs and pass results to the agent
+
+---
 
 ## AI Framework Tasks (Optional)
 - [ ] Lightweight LangGraph state modeling inside GovernanceAgent.
@@ -122,6 +152,7 @@ Pipeline order:
 - [ ] Optional minimal LangGraph version of pipeline.
 - [ ] Implement hooks for guardrails.
 
+---
 
 ## Other Improvements
 - [ ] Add caching (@st.cache_data) for heavy DB reads to improve UI responsiveness.
@@ -138,6 +169,7 @@ Pipeline order:
 - All LLM agents use JSON parser utilities.
 - Rotating logs saved to logs/pipeline.log.
 - GovernanceAgent outputs include risk, escalation, compliance.
+- GovernanceInsightsAgent produces historical insights using DB aggregation APIs.
 - NotificationAgent fires when escalation is required.
 - Streamlit UI fully operational.
 
@@ -147,3 +179,4 @@ Pipeline order:
 - Follow `.kiro/steering/standards.md` & `.kiro/steering/structure.md`.
 - Use incremental steps for refactors or UI code.
 - MCP endpoint handling must support viaSocket HTTP/S endpoints exactly as provided.
+

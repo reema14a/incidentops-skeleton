@@ -91,12 +91,62 @@ ui/
 
 * Severity, category, and timeline charts
 
-### **Phase 4 — Governance & Notifications**
+### **Phase 4 — Governance**
 
 * Governance summary + compliance
-* Notification channel/status viewer
+* Governance Page Architecture
+```
+Governance Page
+ ├── Overview Tab  
+ │     - Summary card (risk, escalation, compliance count)
+ │     - Timestamp, run ID
+ │     - Compact JSON expander
+ │
+ ├── Historical Tab  (DB analytics)
+ │     - Governance history table
+ │     - Risk trend charts
+ │     - Escalation frequency charts
+ │     - Compliance trend charts
+ │     - Category distribution charts
+ │     - Severity distribution charts
+ │     - Per-run JSON expanders
+ │
+ └── AI Insights Tab (LLM)
+       - trend_summary
+       - recurring issues
+       - category hotspots
+       -  compliance_trend
+       - risk_trend
+       - recommendations
+       - anomaly_detection
+       - raw JSON
+```
 
-### **Phase 5 — UI Tests**
+### **Phase 5 - Governance Page – AI Insights Tab (NEW)**
+
+* Displays results from GovernanceInsightsAgent as mentioned in above architecture 
+  * Trend Summary
+  * Recurring Issues
+  * Category Hotspots
+  * Compliance Trend
+  * Risk Trend
+  * Recommendations
+  * Anomaly Detection
+  * Raw JSON
+  
+### **Phase 6 — Notifications**
+
+* Notification channel/status viewer
+* Support configuration of multiple Gmail recipients.
+* Show recent notification events.
+* Provide "Send Test Notification".
+
+### **Phase 7 — Navigation Improvements**
+- Dashboards set as default landing page.
+- Home functions as Navigation Hub.
+- Pipeline Runner displays links to Governance, Audit Logs, Notifications after execution.
+
+### **Phase 8 — UI Tests**
 
 * Page rendering tests
 * Mock pipeline tests
@@ -165,44 +215,58 @@ ui/
       - Support “All Time” view
       - Gracefully handle when no runs fall within the selected range
 
-
 ---
 
 ## **Phase 4 — Governance**
 
 * [x] Create `ui/pages/Governance.py`
-* [x] Display risk score
+* [x] Display risk level
 * [x] Display escalation decision
 * [x] Fix Governance page to use values from governance_data JSON:
       - Parse governance_data JSON for risk, escalation, commentary, compliance_issues, risk_score, extra_metadata, and additional_context
       - Display Pipeline Run ID in the main metadata row
       - Do not rely on legacy columns (risk, escalation, commentary)
-* [ ] Enhance Governance page with advanced analytics using DB-backed audit_data and governance_data:
-      - Add a governance history table (timestamp, risk, escalation, total incidents)
-      - Add trend visualizations (risk score, escalation frequency, compliance issues)
-      - Add triage & resolution distribution charts (severity, category, priority)
-      - Add a “Key Observations” insights section synthesizing recurring issues 
-      - Add expandable JSON viewers for each run
-      - Ensure all analytics use DB read APIs only (no JSON files)
-
-* [ ] Redesign Governance page layout:
-      - Add a “Summary Card” at the top showing the most recent run (risk, escalation, compliance)
-      - Separate interface into two tabs: Overview and Historical
-      - Move detailed history into collapsible sections with a “Show More History” toggle
-
+* [ ] Enhance Governance analytics UI:
+      - Add governance history table
+      - Add risk/escalation/compliance trend charts
+      - Add severity & category distribution charts
+      - Add Key Observations summary
+      - Add per-run JSON expanders
+* [ ] Redesign Governance layout (Summary Card, Overview tab, Historical tab, collapsible history)
 
 ---
+## **Phase 5 — Governance Insights**
+- [ ] Add AI Insights tab to Governance page with three sections:
+      - Summary Insights (trend_summary)
+      - Patterns (recurring_issues, hotspots)
+      - Recommendations + anomalies
+- [ ] Display output of GovernanceInsightsAgent
+- [ ] Add JSON expander for insights output
+- [ ] Add DB-backed trend charts (risk, compliance, escalation)
 
-## **Phase 5 — Notifications**
+
+## **Phase 6 — Notifications**
 
 * [ ] Create `ui/pages/Notifications.py`
 * [ ] Show enabled channels from settings
 * [ ] Show last notification results
 * [ ] Show success/error messages
+- [ ] Implement Notifications page
+- [ ] Add field for configuring multiple Gmail recipient emails
+- [ ] Display list of recent notification events from DB
+- [ ] Add "Send Test Notification" action
 
 ---
 
-## **Phase 6 — UI Tests**
+## **Phase 7 — Navigation Improvements**
+
+- [ ] Set Dashboards as default landing page instead of Home
+- [ ] Convert Home page into Navigation Hub
+- [ ] Add navigation buttons from Pipeline Runner to Governance, Audit Logs, and Notifications
+
+---
+
+## **Phase 8 — UI Tests**
 
 * [ ] Add UI tests for Pipeline Runner
 * [ ] Add UI tests for Audit Logs

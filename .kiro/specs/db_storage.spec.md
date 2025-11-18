@@ -16,6 +16,7 @@ This spec introduces a lightweight persistent storage layer using SQLite to repl
 * Governance analysis results
 * Compliance issues
 * Notification events
+* GovernanceInsightsAgent outputs for historical UI display
 
 The SQLite file will be located at data/db/incidents.db inside the project container.
 
@@ -26,28 +27,6 @@ The SQLite file will be located at data/db/incidents.db inside the project conta
 3. Ensure agents never issue SQL directly.
 4. Make the UI read from the DB for dashboards, governance history, notifications, and audits.
 5. Ensure migration compatibility and graceful fallbacks (continue to function if DB missing, optionally falling back to existing JSON if necessary).
-
-# Database Access Layer
-
-The DB utility module resides at db/db_util.py and exposes a clear, documented API for write and read operations. Agents and UI must use these APIs rather than direct SQL.
-
-Public APIs to be implemented (names only; implementation is part of tasks):
-
-**Write APIs:**
-* insert_pipeline_run(timestamp, alerts_count, raw_data_path)
-* insert_audit_summary(run_id, audit_dict)
-* insert_governance_analysis(run_id, gov_dict)
-* insert_compliance_issues(run_id, issues_list)
-* insert_notification_event(run_id, channel, status, response)
-
-**Read APIs:**
-* get_pipeline_runs(limit)
-* get_governance_history(limit)
-* get_notifications(run_id)
-* get_dashboard_metrics()
-* get_compliance_stats()
-
-DB writes must be transactional and must log (to pipeline.log) any DB errors without blocking the pipeline run.
 
 # Schema (high level)
 
@@ -81,6 +60,44 @@ DB writes must be transactional and must log (to pipeline.log) any DB errors wit
 * channel: text
 * status: text
 * response: text
+
+6. insights_history
+- run_id: integer
+- insights_data: text (JSON)
+- timestamp: text
+
+# Database Access Layer
+
+The DB utility module resides at db/db_util.py and exposes a clear, documented API for write and read operations. Agents and UI must use these APIs rather than direct SQL.
+
+Public APIs to be implemented (names only; implementation is part of tasks):
+
+**Write APIs:**
+* insert_pipeline_run(timestamp, alerts_count, raw_data_path)
+* insert_audit_summary(run_id, audit_dict)
+* insert_governance_analysis(run_id, gov_dict)
+* insert_compliance_issues(run_id, issues_list)
+* insert_notification_event(run_id, channel, status, response)
+* insert_insights_history(run_id, insights_dict)
+
+**Read APIs:**
+* get_pipeline_runs(limit)
+* get_governance_history(limit)
+* get_notifications(run_id)
+* get_dashboard_metrics()
+* get_compliance_stats()
+* get_insights_history(run_id)
+
+**Required Aggregation APIs:**
+These functions compute raw statistics. They do not produce insights.
+- get_risk_trend()
+- get_compliance_trend()
+- get_escalation_text_counts()
+- get_recent_runs()
+- get_category_distribution()
+- get_severity_distribution()
+
+DB writes must be transactional and must log (to pipeline.log) any DB errors without blocking the pipeline run.
 
 # Integration points
 
@@ -171,10 +188,31 @@ DB writes must be transactional and must log (to pipeline.log) any DB errors wit
 * [x] Update Dashboard page to use get_dashboard_metrics instead of reading JSON
 * [x] Update Dashboard page to use get_severity_distribution, get_category_distribution, and get_timeline_data for charts instead of reading JSON
 * [x] Update Governance page to read historical governance from get_governance_history
+
+## Phase 6 - Governance Analytics
+- [x] Implement get_risk_trend()
+- [ ] Implement get_compliance_trend()
+- [ ] Implement get_escalation_text_counts()
+- [ ] Implement get_recent_runs()
+- [ ] Implement get_category_distribution()
+- [ ] Implement get_severity_distribution()
+
+## Phase 7 - Governance Insights
+- [ ] Add insights_history table
+- [ ] Implement insert_insights_history(run_id, insights_json)
+- [ ] Implement get_insights_history(limit)
+* [ ] Persist GovernanceInsightsAgent output into insights_history
+    - Ensure orchestrator writes insights_data + timestamp to DB
+
+Ensure all trend and insight queries are DB-backed (no file reads)
+
+## Phase 8 - Remaining work
 * [ ] Update Notifications page to read events from get_notifications
 * [ ] Update Audit Logs page to read from the DB
 * [ ] Add a README snippet describing DB usage for developers
 * [ ] Add refresh controls where applicable (manual and optional auto-refresh)
+
+
 
 ## Phase 6 — Tests & CI
 
@@ -192,15 +230,15 @@ DB writes must be transactional and must log (to pipeline.log) any DB errors wit
 
 ## Phase 8 - Verification Report
 * [ ] Generate DB Storage End-to-End Verification Report summarizing:
-- DB initialization behavior
-- Schema validation
-- Insert + read API correctness
-- Orchestrator → DB integration correctness
-- UI DB-backed rendering validation
-- Fallback behavior when DB missing
-- Test execution results
-- Any performance observations
-- Final readiness confirmation
+    - DB initialization behavior
+    - Schema validation
+    - Insert + read API correctness
+    - Orchestrator → DB integration correctness
+    - UI DB-backed rendering validation
+    - Fallback behavior when DB missing
+    - Test execution results
+    - Any performance observations
+    - Final readiness confirmation
 
 # Acceptance Criteria
 
@@ -209,6 +247,7 @@ DB writes must be transactional and must log (to pipeline.log) any DB errors wit
 * Orchestrator writes pipeline run, audit summary, governance analysis, compliance issues, and notification events
 * UI reads DB-backed data for Dashboard, Audit, Governance, Notifications pages
 * Dashboard charts (severity breakdown, category distribution, timeline, insights) work entirely from database queries without reading JSON files
+* Trend visualizations and insights rely on DB aggregation functions.
 * DB errors are logged and do not stop the pipeline
 * JSON fallback only activates when DB is unavailable (not for normal operations)
 * Tests pass for DB read/write operations 

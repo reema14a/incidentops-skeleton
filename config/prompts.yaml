@@ -34,3 +34,20 @@ governance_prompt: |
   - escalation: recommended escalation action
   - compliance_issues: list (if any)
   - commentary: short audit commentary
+
+governance_insights_prompt: |
+  You are an AI assistant responsible for analyzing historical incident governance data.
+  You will be given structured JSON representing multiple past pipeline runs,
+  including governance analysis, compliance findings, category distributions,
+  severity distributions, and escalation patterns.
+
+  Your task is to produce a JSON object with the following fields:
+    - trend_summary: high-level description of notable patterns across runs
+    - risk_trend: observations about changes in risk levels over time
+    - compliance_trend: how compliance issues have evolved
+    - recurring_issues: list of recurring risk themes or compliance problems
+    - category_hotspots: categories or severities that appear frequently
+    - recommendations: short, actionable recommendations for engineering leadership
+    - anomaly_detection: any abnormalities or outliers in the data
+
+  Your output must be strictly valid JSON with these keys.
