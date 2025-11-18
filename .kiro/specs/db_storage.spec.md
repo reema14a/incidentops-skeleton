@@ -132,28 +132,27 @@ DB writes must be transactional and must log (to pipeline.log) any DB errors wit
 
 ## Phase 2 — Write APIs
 
-* [ ] Implement insert_pipeline_run(timestamp, alerts_count, raw_data_path=None)
-* [ ] Implement insert_audit_summary(run_id, audit_dict)
-* [ ] Implement insert_governance_analysis(run_id, gov_dict)
-* [ ] Implement insert_compliance_issues(run_id, issues_list)
-* [ ] Implement insert_notification_event(run_id, channel, status, response)
+* [x] Implement insert_pipeline_run(timestamp, alerts_count, raw_data_path=None)
+* [x] Implement insert_audit_summary(run_id, audit_dict)
+* [x] Implement insert_governance_analysis(run_id, gov_dict)
+* [x] Implement insert_compliance_issues(run_id, issues_list)
+* [x] Implement insert_notification_event(run_id, channel, status, response)
 
 ## Phase 3 — Read APIs
 
-* [ ] Implement get_pipeline_runs(limit=None)
-* [ ] Implement get_governance_history(limit=None)
-* [ ] Implement get_notifications(run_id=None)
-* [ ] Implement get_dashboard_metrics()
-* [ ] Implement get_compliance_stats()
+* [x] Implement get_pipeline_runs(limit=None)
+* [x] Implement get_governance_history(limit=None)
+* [x] Implement get_notifications(run_id=None)
+* [x] Implement get_dashboard_metrics()
+* [x] Implement get_compliance_stats()
 
 ## Phase 4 — Orchestrator Integration
 
 * [ ] Update orchestrator to call DB write APIs at appropriate pipeline stages:
-
-  * [ ] Create pipeline_runs entry at pipeline start or after OpsLog
-  * [ ] Write audit_summary after OpsLog
-  * [ ] Write governance_analysis and compliance issues after Governance step
-  * [ ] Write notification_events after Notification step
+* [ ] Create pipeline_runs entry at pipeline start or after OpsLog
+* [ ] Write audit_summary after OpsLog
+* [ ] Write governance_analysis and compliance issues after Governance step
+* [ ] Write notification_events after Notification step
 * [ ] Ensure DB write failures are logged and set a flag in the returned pipeline output but do not abort pipeline execution
 
 ## Phase 5 — UI Integration
