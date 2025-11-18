@@ -120,6 +120,11 @@ Pipeline order:
 - [ ] Lightweight LangGraph state modeling inside GovernanceAgent.
 - [ ] Export flow visualization (JSON or DOT).
 - [ ] Optional minimal LangGraph version of pipeline.
+- [ ] Implement hooks for guardrails.
+
+
+## Other Improvements
+- [ ] Add caching (@st.cache_data) for heavy DB reads to improve UI responsiveness.
 
 ## Testing Tasks
 - [ ] Update tests for all LLM agents (mocking OpenAIClient).

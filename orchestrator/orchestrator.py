@@ -34,10 +34,16 @@ class PipelineExecutor:
     Ensures data flow integrity and validates outputs between stages.
     """
     
-    def __init__(self):
-        """Initialize pipeline executor with agent instances."""
+    def __init__(self, log_file_path: Optional[str] = None):
+        """
+        Initialize pipeline executor with agent instances.
+        
+        Args:
+            log_file_path: Optional path to log file for MonitorAgent to process.
+                          If None, MonitorAgent uses default path from settings.
+        """
         self.agents = {
-            'monitor': MonitorAgent("MonitorAgent"),
+            'monitor': MonitorAgent("MonitorAgent", log_path=log_file_path),
             'llm_summary': LLMAlertSummaryAgent("LLMAlertSummaryAgent"),
             'triage': TriageAgent("TriageAgent"),
             'llm_resolution': LLMResolutionAgent("LLMResolutionAgent"),
@@ -47,6 +53,7 @@ class PipelineExecutor:
         }
         self.execution_log = []
         self.run_id: Optional[int] = None
+        self.log_file_path = log_file_path
         self.db_write_status = {
             'pipeline_run': False,
             'audit_summary': False,
@@ -288,12 +295,13 @@ class PipelineExecutor:
         """
         try:
             # Create pipeline_runs entry at pipeline start
-            timestamp = datetime.utcnow().isoformat()
+            # Use ISO 8601 format with microseconds (UTC)
+            timestamp = datetime.utcnow().isoformat(timespec="microseconds")
             try:
                 self.run_id = db_util.insert_pipeline_run(
                     timestamp=timestamp,
                     alerts_count=0,  # Will be updated after Monitor stage
-                    raw_data_path=None
+                    raw_data_path=self.log_file_path
                 )
                 
                 if self.run_id:
@@ -354,7 +362,9 @@ class PipelineExecutor:
             # Write audit_summary after OpsLog
             if self.run_id:
                 try:
-                    success = db_util.insert_audit_summary(self.run_id, summary)
+                    # Pass the full audit_entry if available, otherwise use summary
+                    audit_dict = summary.get('audit_entry', summary)
+                    success = db_util.insert_audit_summary(self.run_id, audit_dict)
                     self.db_write_status['audit_summary'] = success
                     if not success:
                         logger.error(f"Failed to write audit_summary for run_id {self.run_id}")
@@ -479,12 +489,16 @@ class PipelineExecutor:
             raise
 
 
-def run_pipeline() -> Dict:
+def run_pipeline(log_file_path: Optional[str] = None) -> Dict:
     """
     Execute the incident detection pipeline.
+    
+    Args:
+        log_file_path: Optional path to log file for MonitorAgent to process.
+                      If None, MonitorAgent uses default path from settings.
     
     Returns:
         Dict: Pipeline execution summary
     """
-    executor = PipelineExecutor()
+    executor = PipelineExecutor(log_file_path=log_file_path)
     return executor.run()

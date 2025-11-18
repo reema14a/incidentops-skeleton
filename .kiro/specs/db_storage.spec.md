@@ -33,11 +33,14 @@ The DB utility module resides at db/db_util.py and exposes a clear, documented A
 
 Public APIs to be implemented (names only; implementation is part of tasks):
 
+**Write APIs:**
 * insert_pipeline_run(timestamp, alerts_count, raw_data_path)
 * insert_audit_summary(run_id, audit_dict)
 * insert_governance_analysis(run_id, gov_dict)
 * insert_compliance_issues(run_id, issues_list)
 * insert_notification_event(run_id, channel, status, response)
+
+**Read APIs:**
 * get_pipeline_runs(limit)
 * get_governance_history(limit)
 * get_notifications(run_id)
@@ -58,16 +61,12 @@ DB writes must be transactional and must log (to pipeline.log) any DB errors wit
 2. audit_summary
 
 * run_id: integer (foreign key to pipeline_runs)
-* status: text
-* count: integer
-* timestamp: text
+* audit_data: text (full audit_dict stored as JSON text)
 
 3. governance_analysis
 
 * run_id: integer
-* risk: text
-* escalation: text
-* commentary: text
+* governance_data: text (full gov_dict stored as JSON text)
 
 4. compliance_issues
 
@@ -129,6 +128,11 @@ DB writes must be transactional and must log (to pipeline.log) any DB errors wit
 * [x] Implement SQLite initialization logic so that data/db/incidents.db is created and tables are applied when DB utility is invoked
 * [x] Create a local migrations mechanism that runs idempotent table creation statements on initialization
 * [x] Add db connection management (context manager pattern) to db/db_util.py
+- [x] Add migration to add missing JSON columns:
+      - Add column audit_data TEXT to audit_summary (store full audit_dict)
+      - Add column governance_data TEXT to governance_analysis (store full gov_dict)
+      Migration must be idempotent (add column only if it does not already exist).
+
 
 ## Phase 2 — Write APIs
 
@@ -149,16 +153,24 @@ DB writes must be transactional and must log (to pipeline.log) any DB errors wit
 ## Phase 4 — Orchestrator Integration
 
 * [x] Update orchestrator to call DB write APIs at appropriate pipeline stages:
-  * Create pipeline_runs entry at pipeline start or after OpsLog
-  * Write audit_summary after OpsLog
-  * Write governance_analysis and compliance issues after Governance step
-  * Write notification_events after Notification step
+  - Create pipeline_runs entry at pipeline start or after OpsLog
+  - Write audit_summary after OpsLog
+  - Write governance_analysis and compliance issues after Governance step
+  - Write notification_events after Notification step
 * [x] Ensure DB write failures are logged and set a flag in the returned pipeline output but do not abort pipeline execution
+* [x] Update insert_audit_summary and insert_governance_analysis to store full audit_dict and gov_dict into audit_data and governance_data columns (JSON-encoded)
+    - Update orchestrator to send this additional data to write API
+* [x] Normalize timestamp storage across all tables to strict ISO 8601 with microseconds.
+      - Update all pipeline agents to use datetime.utcnow().isoformat(timespec="microseconds").
+      - Migrate old timestamp values into the normalized format.
+
+
 
 ## Phase 5 — UI Integration
 
-* [ ] Update Dashboard page to use get_dashboard_metrics instead of reading JSON
-* [ ] Update Governance page to read historical governance from get_governance_history
+* [x] Update Dashboard page to use get_dashboard_metrics instead of reading JSON
+* [x] Update Dashboard page to use get_severity_distribution, get_category_distribution, and get_timeline_data for charts instead of reading JSON
+* [x] Update Governance page to read historical governance from get_governance_history
 * [ ] Update Notifications page to read events from get_notifications
 * [ ] Update Audit Logs page to read from the DB
 * [ ] Add a README snippet describing DB usage for developers
@@ -193,12 +205,13 @@ DB writes must be transactional and must log (to pipeline.log) any DB errors wit
 # Acceptance Criteria
 
 * Database initializes automatically in data/db/incidents.db
-* Schema matches the tables defined in this spec
-* Orchestrator writes all required records (run, audit, governance, notifications)
+* Schema matches the minimal tables (pipeline_runs, audit_summary, governance_analysis, compliance_issues, notification_events)
+* Orchestrator writes pipeline run, audit summary, governance analysis, compliance issues, and notification events
 * UI reads DB-backed data for Dashboard, Audit, Governance, Notifications pages
+* Dashboard charts (severity breakdown, category distribution, timeline, insights) work entirely from database queries without reading JSON files
 * DB errors are logged and do not stop the pipeline
-* JSON fallback works when DB is missing
-* Tests pass for DB read/write operations
+* JSON fallback only activates when DB is unavailable (not for normal operations)
+* Tests pass for DB read/write operations 
 * CI uses a temp DB for test runs
 * Steering docs reflect DB-only SQL rules
 * README contains DB setup and usage description
@@ -206,7 +219,8 @@ DB writes must be transactional and must log (to pipeline.log) any DB errors wit
 # Notes
 
 * Keep DB schema minimal initially; extend only when necessary.
-* Continue to preserve backward compatibility by providing optional fallback to existing JSON files if the DB file is not present. This fallback must be implemented in db/db_util.py and not in agents or UI.
+* JSON files should ONLY be used as a fallback when the database is unavailable or initialization fails. All normal operations must read from and write to the database.
+* The UI should NOT attempt to read JSON files directly - all data access must go through db/db_util.py APIs which handle fallback logic internally if needed.
 * All DB operations should produce helpful logs in logs/pipeline.log.
 
 ---

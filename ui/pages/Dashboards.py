@@ -6,11 +6,24 @@ Displays severity breakdown, category distribution, and timeline charts.
 """
 
 import streamlit as st
-import json
+import sys
 from pathlib import Path
-from typing import Dict, List, Any
-from datetime import datetime
+from typing import List, Dict, Any
 from collections import defaultdict
+
+# Add project root to Python path
+project_root = Path(__file__).parent.parent.parent
+if str(project_root) not in sys.path:
+    sys.path.insert(0, str(project_root))
+
+# Import database utilities
+from db.db_util import (
+    get_dashboard_metrics,
+    get_pipeline_runs,
+    get_severity_distribution,
+    get_category_distribution,
+    get_timeline_data
+)
 
 # Import reusable chart components
 from ui.components.charts import (
@@ -20,117 +33,56 @@ from ui.components.charts import (
 )
 
 
-def get_output_log_path() -> Path:
+def load_resolution_plans_from_db() -> List[Dict[str, Any]]:
     """
-    Get the path to the output log file.
+    Load resolution plans from database audit data for insights calculation.
+    
+    This function retrieves resolution plans from the audit_data JSON column
+    to support the insights tab calculations.
     
     Returns:
-        Path: Path object pointing to data/output/output_log.json
+        List[Dict]: List of resolution plan records
     """
-    project_root = Path(__file__).parent.parent.parent
-    return project_root / "data" / "output" / "output_log.json"
-
-
-def load_pipeline_history() -> List[Dict[str, Any]]:
-    """
-    Load pipeline execution history from output log.
-    
-    Returns:
-        List[Dict]: List of pipeline execution records
-    """
-    log_path = get_output_log_path()
-    
-    if not log_path.exists():
-        return []
+    import json
     
     try:
-        with open(log_path, 'r', encoding='utf-8') as f:
-            data = json.load(f)
-        return data if isinstance(data, list) else []
+        # Get pipeline runs from database
+        db_runs = get_pipeline_runs()
+        
+        if not db_runs:
+            return []
+        
+        # Import DB connection to query audit_data
+        from db.db_util import get_connection
+        
+        resolution_plans = []
+        
+        with get_connection() as conn:
+            cursor = conn.cursor()
+            
+            # Query to get all audit_data records
+            query = """
+                SELECT audit_data
+                FROM audit_summary
+                WHERE audit_data IS NOT NULL
+            """
+            
+            cursor.execute(query)
+            rows = cursor.fetchall()
+            
+            for row in rows:
+                try:
+                    audit_data = json.loads(row['audit_data'])
+                    plans = audit_data.get('resolution_plans', [])
+                    resolution_plans.extend(plans)
+                except (json.JSONDecodeError, KeyError, TypeError):
+                    continue
+        
+        return resolution_plans
+        
     except Exception as e:
-        st.error(f"Error loading pipeline history: {str(e)}")
+        st.error(f"Error loading resolution plans from database: {str(e)}")
         return []
-
-
-def aggregate_severity_data(history: List[Dict[str, Any]]) -> Dict[str, int]:
-    """
-    Aggregate severity counts across all pipeline executions.
-    
-    Args:
-        history: List of pipeline execution records
-        
-    Returns:
-        Dict: Severity level to count mapping
-    """
-    severity_totals = defaultdict(int)
-    
-    for record in history:
-        stage_outputs = record.get('stage_outputs', {})
-        triage_stage = stage_outputs.get('triage_stage', {})
-        severity_dist = triage_stage.get('severity_distribution', {})
-        
-        for severity, count in severity_dist.items():
-            severity_totals[severity] += count
-    
-    return dict(severity_totals)
-
-
-def aggregate_category_data(history: List[Dict[str, Any]]) -> Dict[str, int]:
-    """
-    Aggregate category counts across all pipeline executions.
-    
-    Args:
-        history: List of pipeline execution records
-        
-    Returns:
-        Dict: Category to count mapping
-    """
-    category_totals = defaultdict(int)
-    
-    for record in history:
-        stage_outputs = record.get('stage_outputs', {})
-        triage_stage = stage_outputs.get('triage_stage', {})
-        category_dist = triage_stage.get('category_distribution', {})
-        
-        for category, count in category_dist.items():
-            category_totals[category] += count
-    
-    return dict(category_totals)
-
-
-def extract_timeline_data(history: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    """
-    Extract timeline data from pipeline execution history.
-    
-    Args:
-        history: List of pipeline execution records
-        
-    Returns:
-        List[Dict]: Timeline data with timestamps and incident counts
-    """
-    timeline = []
-    
-    for record in history:
-        timestamp_str = record.get('execution_timestamp', '')
-        total_incidents = record.get('total_incidents', 0)
-        
-        if timestamp_str:
-            try:
-                # Parse timestamp
-                dt = datetime.strptime(timestamp_str, '%Y-%m-%d %H:%M:%S')
-                timeline.append({
-                    'timestamp': dt,
-                    'date': dt.strftime('%Y-%m-%d'),
-                    'time': dt.strftime('%H:%M:%S'),
-                    'incidents': total_incidents
-                })
-            except ValueError:
-                continue
-    
-    # Sort by timestamp
-    timeline.sort(key=lambda x: x['timestamp'])
-    
-    return timeline
 
 
 # Page header with controls
@@ -175,13 +127,13 @@ if auto_refresh_interval > 0:
 
 st.markdown("---")
 
-# Load pipeline history
-history = load_pipeline_history()
+# Load dashboard metrics from database
+metrics = get_dashboard_metrics()
 
 # Handle empty history
-if not history:
-    st.warning("⚠️ No pipeline execution history found")
-    st.info(f"Expected location: `{get_output_log_path()}`")
+if metrics['total_executions'] == 0:
+    st.warning("⚠️ No pipeline execution history found in database")
+    st.info("Database location: `data/db/incidents.db`")
     st.markdown("""
     **To generate dashboard data:**
     1. Navigate to the **Pipeline Runner** page
@@ -190,27 +142,29 @@ if not history:
     """)
     st.stop()
 
-# Display summary statistics
+# Display summary statistics from database
 st.subheader("📈 Summary Statistics")
 
 col1, col2, col3, col4 = st.columns(4)
 
 with col1:
-    st.metric("Total Executions", len(history))
+    st.metric("Total Executions", metrics['total_executions'])
 
 with col2:
-    total_incidents = sum(record.get('total_incidents', 0) for record in history)
-    st.metric("Total Incidents", total_incidents)
+    st.metric("Total Incidents", metrics['total_incidents'])
 
 with col3:
-    avg_incidents = total_incidents / len(history) if history else 0
-    st.metric("Avg Incidents/Run", f"{avg_incidents:.1f}")
+    st.metric("Avg Incidents/Run", f"{metrics['avg_incidents_per_run']:.1f}")
 
 with col4:
     # Get most recent execution timestamp
-    if history:
-        latest = history[-1].get('execution_timestamp', 'N/A')
-        st.metric("Last Execution", latest.split()[0] if latest != 'N/A' else 'N/A')
+    last_exec = metrics['last_execution_timestamp']
+    if last_exec:
+        # Extract just the date part if timestamp includes time
+        display_date = last_exec.split()[0] if ' ' in last_exec else last_exec.split('T')[0]
+        st.metric("Last Execution", display_date)
+    else:
+        st.metric("Last Execution", "N/A")
 
 st.markdown("---")
 
@@ -222,14 +176,14 @@ tab1, tab2, tab3, tab4 = st.tabs([
     "📅 Incident Timeline"
 ])
 
-# Prepare data for all tabs
-severity_data = aggregate_severity_data(history)
-category_data = aggregate_category_data(history)
-timeline_data = extract_timeline_data(history)
+# Load chart data from database
+severity_data = get_severity_distribution()
+category_data = get_category_distribution()
+timeline_data = get_timeline_data()
 
 # Tab 1: Insights (now first/default)
 with tab1:
-    if history:
+    if metrics['total_executions'] > 0:
         insights_col1, insights_col2 = st.columns(2)
         
         with insights_col1:
@@ -264,14 +218,13 @@ with tab1:
                 st.write("• N/A")
             
             st.markdown("**Average Resolution Priority:**")
-            # Calculate average priority from resolution plans
+            # Calculate average priority from resolution plans stored in DB
+            resolution_plans = load_resolution_plans_from_db()
             priorities = []
-            for record in history:
-                resolution_plans = record.get('resolution_plans', [])
-                for plan in resolution_plans:
-                    priority = plan.get('priority')
-                    if priority is not None:
-                        priorities.append(priority)
+            for plan in resolution_plans:
+                priority = plan.get('priority')
+                if priority is not None:
+                    priorities.append(priority)
             
             if priorities:
                 avg_priority = sum(priorities) / len(priorities)

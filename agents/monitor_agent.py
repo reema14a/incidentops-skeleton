@@ -84,7 +84,13 @@ class MonitorAgent(BaseAgent):
                 
                 # Try to extract timestamp from beginning of line
                 timestamp_match = re.match(r'(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2})', line)
-                timestamp = timestamp_match.group(1) if timestamp_match else datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                # If timestamp found in log, convert to ISO 8601; otherwise use current UTC time
+                if timestamp_match:
+                    # Parse the extracted timestamp and convert to ISO 8601 with microseconds
+                    dt = datetime.strptime(timestamp_match.group(1), '%Y-%m-%d %H:%M:%S')
+                    timestamp = dt.isoformat(timespec="microseconds")
+                else:
+                    timestamp = datetime.utcnow().isoformat(timespec="microseconds")
                 
                 return {
                     'timestamp': timestamp,

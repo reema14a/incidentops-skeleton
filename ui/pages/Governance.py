@@ -6,72 +6,71 @@ Shows governance analysis results with collapsible details.
 """
 
 import streamlit as st
+import sys
 import json
 from pathlib import Path
 from typing import Dict, List, Any
+from datetime import datetime
+
+# Add project root to Python path
+ROOT = Path(__file__).resolve().parents[2]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+# Import database utilities
+from db import db_util
 
 
-def get_output_log_path() -> Path:
+def get_latest_governance_data() -> Dict[str, Any]:
     """
-    Get the path to the output log file.
+    Extract the most recent governance analysis from the database.
     
-    Returns:
-        Path: Path object pointing to data/output/output_log.json
-    """
-    project_root = Path(__file__).parent.parent.parent
-    return project_root / "data" / "output" / "output_log.json"
-
-
-def load_pipeline_history() -> List[Dict[str, Any]]:
-    """
-    Load pipeline execution history from output log.
-    
-    Returns:
-        List[Dict]: List of pipeline execution records
-    """
-    log_path = get_output_log_path()
-    
-    if not log_path.exists():
-        return []
-    
-    try:
-        with open(log_path, 'r', encoding='utf-8') as f:
-            data = json.load(f)
-        return data if isinstance(data, list) else []
-    except Exception as e:
-        st.error(f"Error loading pipeline history: {str(e)}")
-        return []
-
-
-def get_latest_governance_data(history: List[Dict[str, Any]]) -> Dict[str, Any]:
-    """
-    Extract the most recent governance analysis from pipeline history.
-    
-    Note: Currently, governance analysis is not persisted to the output log by OpsLogAgent.
-    This function will return empty governance data until the persistence layer is updated.
-    
-    Args:
-        history: List of pipeline execution records
-        
     Returns:
         Dict: Latest governance analysis data or empty dict
     """
-    if not history:
+    # Get the most recent governance analysis from the database
+    governance_history = db_util.get_governance_history(limit=1)
+    
+    if not governance_history:
         return {}
     
-    # Get the most recent execution
-    latest = history[-1]
+    latest = governance_history[0]
     
-    # Check if governance data exists in the record
-    # (This will be empty until OpsLogAgent is updated to persist governance data)
-    governance_analysis = latest.get('governance_analysis', {})
-    audit_summary = latest.get('audit_summary', {})
+    # Get the associated pipeline run details
+    pipeline_runs = db_util.get_pipeline_runs(limit=1)
+    
+    if not pipeline_runs:
+        return {}
+    
+    latest_run = pipeline_runs[0]
+    
+    # Parse governance_data JSON if available
+    governance_analysis = {}
+    if latest.get('governance_data'):
+        try:
+            governance_analysis = json.loads(latest['governance_data'])
+        except json.JSONDecodeError:
+            # Fallback to legacy columns if JSON parsing fails
+            governance_analysis = {
+                'risk': latest.get('risk', 'unknown'),
+                'escalation': latest.get('escalation', 'N/A'),
+                'commentary': latest.get('commentary', 'No commentary available'),
+                'compliance_issues': []
+            }
+    else:
+        # Fallback to legacy columns if governance_data is not available
+        governance_analysis = {
+            'risk': latest.get('risk', 'unknown'),
+            'escalation': latest.get('escalation', 'N/A'),
+            'commentary': latest.get('commentary', 'No commentary available'),
+            'compliance_issues': []
+        }
     
     governance_data = {
-        'execution_timestamp': latest.get('execution_timestamp', 'N/A'),
-        'total_incidents': latest.get('total_incidents', 0),
+        'execution_timestamp': latest.get('timestamp', 'N/A'),
+        'total_incidents': latest_run.get('alerts_count', 0),
         'governance_analysis': governance_analysis,
-        'audit_summary': audit_summary
+        'run_id': latest.get('run_id')
     }
     
     return governance_data
@@ -118,19 +117,34 @@ def get_risk_emoji(risk_level: str) -> str:
     else:
         return '🟢'
 
+def format_timestamp(ts: str) -> str:
+    if not ts or ts == "N/A":
+        return "N/A"
+    try:
+        # Remove trailing Z if exists
+        dt = datetime.fromisoformat(ts.replace("Z", ""))
+        return dt.strftime("%Y-%b-%d, %H:%M")
+        # return dt.strftime("%d %b %Y, %I:%M %p")
+    except:
+        return ts  # fallback
+
+def short_escalation(text: str) -> str:
+    if not text: 
+        return "N/A"
+    words = text.strip().split()
+    return " ".join(words[:2])
 
 # Page configuration
 st.title("⚖️ Governance")
 st.markdown("Risk scoring, escalation decisions, and compliance analysis from pipeline executions.")
 st.markdown("---")
 
-# Load pipeline history
-history = load_pipeline_history()
+# Get latest governance data from database
+governance_data = get_latest_governance_data()
 
 # Handle empty history
-if not history:
-    st.warning("⚠️ No pipeline execution history found")
-    st.info(f"Expected location: `{get_output_log_path()}`")
+if not governance_data:
+    st.warning("⚠️ No governance analysis found in database")
     st.markdown("""
     **To generate governance data:**
     1. Navigate to the **Pipeline Runner** page
@@ -139,77 +153,56 @@ if not history:
     """)
     st.stop()
 
-# Get latest governance data
-governance_data = get_latest_governance_data(history)
 governance_analysis = governance_data.get('governance_analysis', {})
 
-# Check if governance analysis exists
-if not governance_analysis:
-    st.warning("⚠️ Governance data is not currently persisted to the output log")
-    
-    st.markdown("### Why is governance data not showing?")
-    st.markdown("""
-    The current pipeline architecture has the following flow:
-    1. **MonitorAgent** → Detects incidents
-    2. **TriageAgent** → Classifies incidents  
-    3. **LLMResolutionAgent** → Generates resolution plans
-    4. **OpsLogAgent** → Persists audit log (you are here)
-    5. **LLMGovernanceAgent** → Analyzes risk and compliance
-    6. **NotificationAgent** → Sends notifications
-    
-    Since OpsLogAgent runs **before** LLMGovernanceAgent, governance data is not included in the persisted output log.
-    """)
-    
-    st.markdown("### How to view governance analysis")
-    st.info("""
-    **Option 1: View in Pipeline Runner (Real-time)**
-    1. Navigate to the **Pipeline Runner** page
-    2. Run the pipeline with log input
-    3. Expand the "⚖️ Governance & Risk Analysis" section
-    
-    **Option 2: Future Enhancement**
-    - Update the pipeline to persist governance data after it's generated
-    - Modify OpsLogAgent to accept and persist governance output
-    - This page will then display historical governance trends
-    """)
-    
-    # Show what data IS available
-    st.markdown("---")
-    st.markdown("### Available Data")
-    st.markdown(f"""
-    The output log contains {len(history)} pipeline execution(s) with:
-    - Incident counts and distributions
-    - Resolution plans and priorities
-    - Agent execution metadata
-    
-    But governance analysis (risk scores, escalation decisions, compliance issues) is not yet persisted.
-    """)
-    
+# Validate governance analysis data
+if not governance_analysis or not governance_analysis.get('risk'):
+    st.warning("⚠️ Governance analysis data is incomplete")
+    st.info("The governance analysis may not have been fully generated during the pipeline run.")
     st.stop()
 
 # Display execution metadata
 st.subheader("📊 Latest Governance Analysis")
 
-col1, col2, col3 = st.columns(3)
+risk_level = governance_analysis.get('risk', 'unknown')
+risk_emoji = get_risk_emoji(risk_level)
 
-with col1:
-    st.metric("Execution Time", governance_data.get('execution_timestamp', 'N/A'))
 
-with col2:
-    st.metric("Total Incidents", governance_data.get('total_incidents', 0))
+with st.expander(" Summary", expanded=True):
+    col1, col2, col3 = st.columns(3)
 
-with col3:
-    risk_level = governance_analysis.get('risk', 'unknown')
-    risk_emoji = get_risk_emoji(risk_level)
-    st.metric("Risk Level", f"{risk_emoji} {risk_level.capitalize()}")
+    with col1:
+        st.metric("Pipeline Run ID", f"#{governance_data.get('run_id', 'N/A')}")
+
+    with col2:
+        formatted_ts = format_timestamp(governance_data.get('execution_timestamp', 'N/A'))
+        st.metric("Execution Time", formatted_ts)
+
+    with col3:
+        st.metric("Total Incidents", governance_data.get('total_incidents', 0))
+
+    st.markdown("---")
+
+    # ---- SECOND ROW ----
+    compliance_issues = governance_analysis.get("compliance_issues", [])
+    compliance_count = len(compliance_issues)
+
+    col4, col5, col6 = st.columns(3)
+
+    with col4:
+        st.metric("Risk Level", f"{get_risk_emoji(risk_level)} {risk_level.capitalize()}")
+
+    with col5:
+        st.metric("Compliance Issues", compliance_count)
+
+    with col6:
+        escalation = short_escalation(governance_analysis.get("escalation"))
+        st.metric("Escalation", escalation)
 
 st.markdown("---")
 
 # Risk Score Section
 st.subheader("🎯 Risk Assessment")
-
-risk_level = governance_analysis.get('risk', 'unknown')
-risk_emoji = get_risk_emoji(risk_level)
 
 # Display risk level with appropriate styling
 if risk_level.lower() == 'critical':
@@ -244,12 +237,32 @@ st.markdown("---")
 # Compliance Issues Section
 st.subheader("📋 Compliance Analysis")
 
-compliance_issues = governance_analysis.get('compliance_issues', [])
+# Get compliance issues from governance_data JSON first
+compliance_issues_records = governance_analysis.get('compliance_issues', [])
 
-if compliance_issues:
-    st.warning(f"⚠️ **{len(compliance_issues)} compliance issue(s) identified**")
+# If not in JSON, fall back to database query
+if not compliance_issues_records:
+    run_id = governance_data.get('run_id')
+    if run_id:
+        # Query compliance issues for this specific run
+        try:
+            with db_util.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("""
+                    SELECT issue
+                    FROM compliance_issues
+                    WHERE run_id = ?
+                    ORDER BY id ASC
+                """, (run_id,))
+                rows = cursor.fetchall()
+                compliance_issues_records = [row['issue'] for row in rows]
+        except Exception as e:
+            st.error(f"Error loading compliance issues: {str(e)}")
+
+if compliance_issues_records:
+    st.warning(f"⚠️ **{len(compliance_issues_records)} compliance issue(s) identified**")
     
-    for idx, issue in enumerate(compliance_issues, 1):
+    for idx, issue in enumerate(compliance_issues_records, 1):
         st.markdown(f"{idx}. {issue}")
 else:
     st.success("✅ No compliance issues detected")
@@ -266,38 +279,88 @@ st.markdown("---")
 
 # Collapsible Details Section
 with st.expander("🔍 View Full Governance Data", expanded=False):
+    # Display the full governance_data JSON
     st.json(governance_analysis)
+    
+    # Display additional fields if they exist
+    if governance_analysis.get('risk_score'):
+        st.markdown("---")
+        st.markdown(f"**Risk Score:** {governance_analysis.get('risk_score')}")
+    
+    if governance_analysis.get('extra_metadata'):
+        st.markdown("---")
+        st.markdown("**Extra Metadata:**")
+        st.json(governance_analysis.get('extra_metadata'))
+    
+    if governance_analysis.get('additional_context'):
+        st.markdown("---")
+        st.markdown("**Additional Context:**")
+        st.markdown(governance_analysis.get('additional_context'))
 
 # Audit Summary Section (if available)
-audit_summary = governance_data.get('audit_summary', {})
-if audit_summary:
+run_id = governance_data.get('run_id')
+if run_id:
     with st.expander("📝 View Audit Summary", expanded=False):
-        st.json(audit_summary)
+        try:
+            with db_util.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("""
+                    SELECT status, count, timestamp, audit_data
+                    FROM audit_summary
+                    WHERE run_id = ?
+                """, (run_id,))
+                row = cursor.fetchone()
+                
+                if row:
+                    audit_data = {
+                        'status': row['status'],
+                        'count': row['count'],
+                        'timestamp': row['timestamp']
+                    }
+                    
+                    # Include full JSON data if available
+                    if row['audit_data']:
+                        try:
+                            audit_json = json.loads(row['audit_data'])
+                            audit_data['full_audit'] = audit_json
+                        except json.JSONDecodeError:
+                            pass
+                    
+                    st.json(audit_data)
+                else:
+                    st.info("No audit summary available")
+        except Exception as e:
+            st.error(f"Error loading audit summary: {str(e)}")
 
 # Historical Governance Trends
 st.markdown("---")
 st.subheader("📈 Historical Governance Trends")
 
-# Calculate historical statistics
-risk_counts = {'low': 0, 'medium': 0, 'high': 0, 'critical': 0}
-total_compliance_issues = 0
+# Get all governance history from database
+all_governance = db_util.get_governance_history()
+all_pipeline_runs = db_util.get_pipeline_runs()
 
-for record in history:
-    # Check for governance_analysis directly in the record
-    gov_analysis = record.get('governance_analysis', {})
-    
-    risk = gov_analysis.get('risk', 'unknown').lower()
-    if risk in risk_counts:
-        risk_counts[risk] += 1
-    
-    compliance = gov_analysis.get('compliance_issues', [])
-    total_compliance_issues += len(compliance)
+# Calculate historical statistics
+risk_counts = {'low': 0, 'medium': 0, 'high': 0, 'critical': 0, 'unknown': 0}
+
+for record in all_governance:
+    risk = record.get('risk', 'unknown')
+    if risk:
+        risk = risk.lower()
+        if risk in risk_counts:
+            risk_counts[risk] += 1
+        else:
+            risk_counts['unknown'] += 1
+
+# Get compliance statistics from database
+compliance_stats = db_util.get_compliance_stats()
+total_compliance_issues = compliance_stats.get('total_issues', 0)
 
 # Display historical metrics
 col1, col2, col3, col4 = st.columns(4)
 
 with col1:
-    st.metric("Total Executions", len(history))
+    st.metric("Total Executions", len(all_pipeline_runs))
 
 with col2:
     critical_high_count = risk_counts['critical'] + risk_counts['high']
@@ -307,20 +370,82 @@ with col3:
     st.metric("Total Compliance Issues", total_compliance_issues)
 
 with col4:
-    avg_compliance = total_compliance_issues / len(history) if history else 0
+    avg_compliance = compliance_stats.get('avg_issues_per_run', 0.0)
     st.metric("Avg Issues/Run", f"{avg_compliance:.1f}")
 
 # Risk distribution chart
 if any(risk_counts.values()):
     st.markdown("**Risk Level Distribution:**")
     
-    # Create columns for risk distribution
+    # Create columns for risk distribution (exclude 'unknown' if it's 0)
+    risk_levels = ['low', 'medium', 'high', 'critical']
     risk_cols = st.columns(4)
     
-    for idx, (risk, count) in enumerate(risk_counts.items()):
+    for idx, risk in enumerate(risk_levels):
+        count = risk_counts.get(risk, 0)
         with risk_cols[idx]:
             emoji = get_risk_emoji(risk)
             st.metric(f"{emoji} {risk.capitalize()}", count)
+
+# Historical Governance Records
+st.markdown("---")
+st.subheader("📜 Historical Governance Records")
+
+if all_governance:
+    st.markdown(f"Showing {len(all_governance)} governance analysis record(s)")
+    
+    # Display governance records in a table-like format
+    for idx, record in enumerate(all_governance):
+        # Parse governance_data JSON for this record
+        raw_json = record.get("governance_data", "") or ""
+        clean_json = raw_json.strip().replace("\n", " ").replace("\r", " ")
+
+        try:
+            record_governance_analysis = json.loads(clean_json)
+        except Exception:
+            record_governance_analysis = {}
+
+
+        risk_level = record_governance_analysis.get('risk', 'unknown')
+        
+        with st.expander(
+            f"Run #{record.get('run_id')} - {record.get('timestamp', 'N/A')} - "
+            f"{get_risk_emoji(risk_level)} {risk_level.capitalize()}",
+            expanded=(idx == 0)  # Expand the first (most recent) record by default
+        ):
+            # Display normalized governance fields (JSON only)
+            col1, col2 = st.columns(2)
+
+            with col1:
+                st.markdown("**Risk Level:**")
+                st.markdown(f"{get_risk_emoji(risk_level)} {risk_level.capitalize()}")
+
+                st.markdown("**Escalation:**")
+                st.write(record_governance_analysis.get("escalation", "N/A"))
+
+            with col2:
+                st.markdown("**Execution Time:**")
+                st.write(record.get("timestamp", "N/A"))
+
+                st.markdown("**Run ID:**")
+                st.write(f"#{record.get('run_id')}")
+            
+            # Display commentary
+            st.markdown("**Commentary:**")
+            commentary = record_governance_analysis.get('commentary', 'No commentary available')
+            st.markdown(commentary)
+            
+            # Display compliance issues from governance_data JSON first
+            compliance_issues_for_run = record_governance_analysis.get("compliance_issues", [])
+            
+            if compliance_issues_for_run:
+                st.markdown("**Compliance Issues:**")
+                for issue_idx, issue in enumerate(compliance_issues_for_run, 1):
+                    st.markdown(f"{issue_idx}. {issue}")
+            else:
+                st.markdown("**Compliance Issues:** ✅ None detected")
+else:
+    st.info("No historical governance records available")
 
 # Footer
 st.markdown("---")

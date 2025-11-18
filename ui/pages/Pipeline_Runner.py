@@ -31,12 +31,26 @@ def run_pipeline_with_input(log_text: str = None, file_input: Any = None) -> Dic
     Returns:
         Dict: Complete pipeline output including all agent results
     """
-    # Note: Current implementation runs with default behavior
-    # Future enhancement: pass log_text/file_input to MonitorAgent
+    import tempfile
+    import os
+    
+    temp_file_path = None
     
     try:
-        # Execute the backend pipeline
-        result = run_pipeline()
+        # If we have log text input (from text area or uploaded file), save it to a temp file
+        if log_text and log_text.strip():
+            # Create a temporary file to store the log data
+            temp_fd, temp_file_path = tempfile.mkstemp(suffix='.txt', prefix='pipeline_input_')
+            
+            # Write the log text to the temp file
+            with os.fdopen(temp_fd, 'w') as temp_file:
+                temp_file.write(log_text)
+            
+            # Execute the backend pipeline with the temp file path
+            result = run_pipeline(log_file_path=temp_file_path)
+        else:
+            # No input provided, use default behavior
+            result = run_pipeline()
         
         # Wrap result in UI-friendly format
         # Note: result structure is {governance_output: {...}, notification_status: ..., notifications_sent: [...]}
@@ -44,7 +58,6 @@ def run_pipeline_with_input(log_text: str = None, file_input: Any = None) -> Dic
             'status': 'success',
             'final_output': result
         }
-
         
         return pipeline_output
         
@@ -53,6 +66,14 @@ def run_pipeline_with_input(log_text: str = None, file_input: Any = None) -> Dic
             'status': 'error',
             'error': str(e)
         }
+    finally:
+        # Clean up temporary file if it was created
+        if temp_file_path and os.path.exists(temp_file_path):
+            try:
+                os.unlink(temp_file_path)
+            except Exception as e:
+                # Log but don't fail if cleanup fails
+                print(f"Warning: Failed to clean up temp file {temp_file_path}: {e}")
 
 
 # Page configuration

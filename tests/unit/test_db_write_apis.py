@@ -347,6 +347,68 @@ class TestInsertAuditSummary:
             
             assert row is not None
             assert row['run_id'] == self.run_id
+    
+    def test_insert_audit_summary_with_full_audit_entry(self):
+        """Test audit summary insertion with full audit entry from OpsLogAgent."""
+        import json
+        
+        # Full audit entry as returned by OpsLogAgent
+        audit_entry = {
+            "execution_timestamp": "2025-11-18 10:30:00",
+            "pipeline_name": "incident_detection",
+            "agent_execution_order": ["MonitorAgent", "TriageAgent", "LLMResolutionAgent", "OpsLogAgent"],
+            "stage_outputs": {
+                "monitor_stage": {
+                    "alerts_detected": 3,
+                    "alert_ids": ["alert_1", "alert_2", "alert_3"]
+                },
+                "triage_stage": {
+                    "severity_distribution": {"high": 2, "medium": 1},
+                    "category_distribution": {"security": 2, "performance": 1}
+                },
+                "resolution_stage": {
+                    "plans_generated": 3,
+                    "priority_distribution": {"critical": 1, "high": 2}
+                }
+            },
+            "resolution_plans": [
+                {"alert_id": "alert_1", "severity": "high", "category": "security"},
+                {"alert_id": "alert_2", "severity": "high", "category": "security"},
+                {"alert_id": "alert_3", "severity": "medium", "category": "performance"}
+            ],
+            "total_incidents": 3,
+            "audit_metadata": {
+                "logged_by": "OpsLogAgent",
+                "log_version": "1.0",
+                "entry_id": "audit_2025-11-18_10-30-00"
+            }
+        }
+        
+        success = insert_audit_summary(self.run_id, audit_entry)
+        assert success is True
+        
+        # Verify data in database
+        with get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM audit_summary WHERE run_id = ?", (self.run_id,))
+            row = cursor.fetchone()
+            
+            assert row is not None
+            assert row['run_id'] == self.run_id
+            # Should use 'logged' as default status for full audit entry
+            assert row['status'] == "logged"
+            # Should extract total_incidents as count
+            assert row['count'] == 3
+            # Should extract execution_timestamp as timestamp
+            assert row['timestamp'] == "2025-11-18 10:30:00"
+            
+            # Verify full audit entry is stored in audit_data column
+            assert row['audit_data'] is not None
+            stored_data = json.loads(row['audit_data'])
+            assert stored_data == audit_entry
+            assert stored_data['pipeline_name'] == "incident_detection"
+            assert len(stored_data['resolution_plans']) == 3
+            assert stored_data['stage_outputs']['monitor_stage']['alerts_detected'] == 3
 
 
 if __name__ == '__main__':

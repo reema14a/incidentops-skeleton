@@ -65,12 +65,13 @@ class OpsLogAgent(BaseAgent):
         else:
             self.log("Failed to persist audit log")
         
-        # Return operation summary
+        # Return operation summary with full audit entry
         return {
             "status": "logged" if success else "failed",
             "count": len(resolution_plans),
             "timestamp": audit_entry["execution_timestamp"],
-            "output_path": self.output_path if success else None
+            "output_path": self.output_path if success else None,
+            "audit_entry": audit_entry  # Include full audit entry for database storage
         }
     
     def _create_audit_entry(self, resolution_plans):
@@ -89,7 +90,7 @@ class OpsLogAgent(BaseAgent):
         Returns:
             dict: Structured audit entry with factual fields only
         """
-        execution_timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        execution_timestamp = datetime.utcnow().isoformat(timespec="microseconds")
         
         # Extract factual stage outputs (counts and distributions only)
         stage_outputs = {

@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 
 # Schema version for migration tracking
-CURRENT_SCHEMA_VERSION = 1
+CURRENT_SCHEMA_VERSION = 3
 
 
 class DatabaseError(Exception):
@@ -190,6 +190,185 @@ def _apply_migration_v1(conn: sqlite3.Connection) -> None:
     logger.info("Applied migration v1: Initial schema created")
 
 
+def _column_exists(conn: sqlite3.Connection, table_name: str, column_name: str) -> bool:
+    """
+    Check if a column exists in a table.
+    
+    Args:
+        conn: Database connection.
+        table_name: Name of the table to check.
+        column_name: Name of the column to check.
+        
+    Returns:
+        bool: True if the column exists, False otherwise.
+    """
+    cursor = conn.cursor()
+    cursor.execute(f"PRAGMA table_info({table_name})")
+    columns = [row[1] for row in cursor.fetchall()]
+    return column_name in columns
+
+
+def _apply_migration_v2(conn: sqlite3.Connection) -> None:
+    """
+    Apply schema version 2: Add JSON data columns to audit_summary and governance_analysis.
+    
+    This migration adds:
+    - audit_data TEXT column to audit_summary (stores full audit_dict as JSON)
+    - governance_data TEXT column to governance_analysis (stores full gov_dict as JSON)
+    
+    The migration is idempotent - columns are only added if they don't already exist.
+    
+    Args:
+        conn: Database connection.
+    """
+    cursor = conn.cursor()
+    
+    # Add audit_data column to audit_summary if it doesn't exist
+    if not _column_exists(conn, 'audit_summary', 'audit_data'):
+        cursor.execute("""
+            ALTER TABLE audit_summary
+            ADD COLUMN audit_data TEXT
+        """)
+        logger.info("Added audit_data column to audit_summary table")
+    else:
+        logger.info("audit_data column already exists in audit_summary table")
+    
+    # Add governance_data column to governance_analysis if it doesn't exist
+    if not _column_exists(conn, 'governance_analysis', 'governance_data'):
+        cursor.execute("""
+            ALTER TABLE governance_analysis
+            ADD COLUMN governance_data TEXT
+        """)
+        logger.info("Added governance_data column to governance_analysis table")
+    else:
+        logger.info("governance_data column already exists in governance_analysis table")
+    
+    # Record migration
+    cursor.execute("""
+        INSERT INTO migrations (version, description)
+        VALUES (?, ?)
+    """, (2, "Add JSON data columns: audit_data to audit_summary, governance_data to governance_analysis"))
+    
+    conn.commit()
+    logger.info("Applied migration v2: Added JSON data columns")
+
+
+def _apply_migration_v3(conn: sqlite3.Connection) -> None:
+    """
+    Apply schema version 3: Normalize timestamps to ISO 8601 with microseconds.
+    
+    This migration converts all existing timestamps to strict ISO 8601 format with microseconds.
+    Format: YYYY-MM-DDTHH:MM:SS.mmmmmm (e.g., 2025-11-18T10:30:00.123456)
+    
+    Tables affected:
+    - pipeline_runs.timestamp
+    - audit_summary.timestamp
+    - migrations.applied_at
+    
+    The migration is idempotent and handles various input timestamp formats.
+    
+    Args:
+        conn: Database connection.
+    """
+    from datetime import datetime
+    
+    cursor = conn.cursor()
+    
+    # Helper function to normalize timestamp strings
+    def normalize_timestamp(ts_str: str) -> str:
+        """Convert various timestamp formats to ISO 8601 with microseconds."""
+        if not ts_str:
+            return ts_str
+        
+        try:
+            # Try parsing common formats
+            formats_to_try = [
+                '%Y-%m-%d %H:%M:%S.%f',      # 2025-11-18 10:30:00.123456
+                '%Y-%m-%d %H:%M:%S',          # 2025-11-18 10:30:00
+                '%Y-%m-%dT%H:%M:%S.%f',       # 2025-11-18T10:30:00.123456 (already correct)
+                '%Y-%m-%dT%H:%M:%S',          # 2025-11-18T10:30:00
+            ]
+            
+            dt = None
+            for fmt in formats_to_try:
+                try:
+                    dt = datetime.strptime(ts_str, fmt)
+                    break
+                except ValueError:
+                    continue
+            
+            if dt is None:
+                logger.warning(f"Could not parse timestamp: {ts_str}")
+                return ts_str
+            
+            # Convert to ISO 8601 with microseconds
+            return dt.isoformat(timespec="microseconds")
+            
+        except Exception as e:
+            logger.warning(f"Error normalizing timestamp '{ts_str}': {e}")
+            return ts_str
+    
+    # Normalize pipeline_runs.timestamp
+    cursor.execute("SELECT id, timestamp FROM pipeline_runs")
+    pipeline_runs = cursor.fetchall()
+    
+    for row in pipeline_runs:
+        run_id = row['id']
+        old_timestamp = row['timestamp']
+        new_timestamp = normalize_timestamp(old_timestamp)
+        
+        if new_timestamp != old_timestamp:
+            cursor.execute("""
+                UPDATE pipeline_runs
+                SET timestamp = ?
+                WHERE id = ?
+            """, (new_timestamp, run_id))
+            logger.info(f"Normalized pipeline_runs timestamp for id={run_id}: {old_timestamp} -> {new_timestamp}")
+    
+    # Normalize audit_summary.timestamp
+    cursor.execute("SELECT id, timestamp FROM audit_summary WHERE timestamp IS NOT NULL")
+    audit_summaries = cursor.fetchall()
+    
+    for row in audit_summaries:
+        audit_id = row['id']
+        old_timestamp = row['timestamp']
+        new_timestamp = normalize_timestamp(old_timestamp)
+        
+        if new_timestamp != old_timestamp:
+            cursor.execute("""
+                UPDATE audit_summary
+                SET timestamp = ?
+                WHERE id = ?
+            """, (new_timestamp, audit_id))
+            logger.info(f"Normalized audit_summary timestamp for id={audit_id}: {old_timestamp} -> {new_timestamp}")
+    
+    # Normalize migrations.applied_at (for consistency)
+    cursor.execute("SELECT version, applied_at FROM migrations")
+    migrations = cursor.fetchall()
+    
+    for row in migrations:
+        version = row['version']
+        old_timestamp = row['applied_at']
+        new_timestamp = normalize_timestamp(old_timestamp)
+        
+        if new_timestamp != old_timestamp:
+            cursor.execute("""
+                UPDATE migrations
+                SET applied_at = ?
+                WHERE version = ?
+            """, (new_timestamp, version))
+            logger.info(f"Normalized migrations timestamp for version={version}: {old_timestamp} -> {new_timestamp}")
+    
+    # Record migration
+    cursor.execute("""
+        INSERT INTO migrations (version, description)
+        VALUES (?, ?)
+    """, (3, "Normalize timestamps to ISO 8601 with microseconds"))
+    
+    conn.commit()
+    logger.info("Applied migration v3: Normalized all timestamps to ISO 8601 with microseconds")
+
+
 def _run_migrations(conn: sqlite3.Connection) -> None:
     """
     Run all pending migrations in order.
@@ -202,9 +381,10 @@ def _run_migrations(conn: sqlite3.Connection) -> None:
     # Define migrations in order
     migrations = {
         1: _apply_migration_v1,
+        2: _apply_migration_v2,
+        3: _apply_migration_v3,
         # Future migrations can be added here:
-        # 2: _apply_migration_v2,
-        # 3: _apply_migration_v3,
+        # 4: _apply_migration_v4,
     }
     
     # Apply pending migrations
@@ -290,15 +470,16 @@ def insert_audit_summary(run_id: int, audit_dict: dict) -> bool:
     
     Args:
         run_id: The pipeline run ID to associate this audit with.
-        audit_dict: Dictionary containing audit summary data with keys:
-                   - status (str): Status of the audit
-                   - count (int): Count of items audited
-                   - timestamp (str): ISO format timestamp
+        audit_dict: Dictionary containing audit summary data. Can be either:
+                   - Simple summary: {status, count, timestamp}
+                   - Full audit entry: {execution_timestamp, total_incidents, stage_outputs, ...}
+                   The full dictionary is stored as JSON in the audit_data column.
                    
     Returns:
         bool: True if insertion succeeded, False otherwise.
         
     Example:
+        # Simple summary
         success = insert_audit_summary(
             run_id=1,
             audit_dict={
@@ -307,21 +488,49 @@ def insert_audit_summary(run_id: int, audit_dict: dict) -> bool:
                 "timestamp": "2025-11-18T10:30:00"
             }
         )
+        
+        # Full audit entry
+        success = insert_audit_summary(
+            run_id=1,
+            audit_dict={
+                "execution_timestamp": "2025-11-18 10:30:00",
+                "total_incidents": 5,
+                "stage_outputs": {...},
+                "resolution_plans": [...]
+            }
+        )
     """
+    import json
+    
     try:
         with get_connection() as conn:
             cursor = conn.cursor()
+            
+            # Serialize the full audit_dict to JSON
+            audit_data_json = json.dumps(audit_dict)
+            
+            # Extract fields - handle both simple summary and full audit entry formats
+            # Use 'logged' as default only if we have a full audit entry (has execution_timestamp)
+            if 'execution_timestamp' in audit_dict and 'status' not in audit_dict:
+                status = 'logged'
+            else:
+                status = audit_dict.get('status')
+            
+            count = audit_dict.get('count') or audit_dict.get('total_incidents')
+            timestamp = audit_dict.get('timestamp') or audit_dict.get('execution_timestamp')
+            
             cursor.execute("""
-                INSERT INTO audit_summary (run_id, status, count, timestamp)
-                VALUES (?, ?, ?, ?)
+                INSERT INTO audit_summary (run_id, status, count, timestamp, audit_data)
+                VALUES (?, ?, ?, ?, ?)
             """, (
                 run_id,
-                audit_dict.get('status'),
-                audit_dict.get('count'),
-                audit_dict.get('timestamp')
+                status,
+                count,
+                timestamp,
+                audit_data_json
             ))
             
-            logger.info(f"Inserted audit summary for run_id {run_id}: status={audit_dict.get('status')}, count={audit_dict.get('count')}")
+            logger.info(f"Inserted audit summary for run_id {run_id}: status={status}, count={count}")
             return True
             
     except Exception as e:
@@ -339,6 +548,7 @@ def insert_governance_analysis(run_id: int, gov_dict: dict) -> bool:
                  - risk (str): Risk level or assessment
                  - escalation (str): Escalation decision or status
                  - commentary (str): Additional governance commentary
+                 The full dictionary is also stored as JSON in the governance_data column.
                    
     Returns:
         bool: True if insertion succeeded, False otherwise.
@@ -353,17 +563,24 @@ def insert_governance_analysis(run_id: int, gov_dict: dict) -> bool:
             }
         )
     """
+    import json
+    
     try:
         with get_connection() as conn:
             cursor = conn.cursor()
+            
+            # Serialize the full gov_dict to JSON
+            governance_data_json = json.dumps(gov_dict)
+            
             cursor.execute("""
-                INSERT INTO governance_analysis (run_id, risk, escalation, commentary)
-                VALUES (?, ?, ?, ?)
+                INSERT INTO governance_analysis (run_id, risk, escalation, commentary, governance_data)
+                VALUES (?, ?, ?, ?, ?)
             """, (
                 run_id,
                 gov_dict.get('risk'),
                 gov_dict.get('escalation'),
-                gov_dict.get('commentary')
+                gov_dict.get('commentary'),
+                governance_data_json
             ))
             
             logger.info(f"Inserted governance analysis for run_id {run_id}: risk={gov_dict.get('risk')}, escalation={gov_dict.get('escalation')}")
@@ -537,9 +754,10 @@ def get_governance_history(limit: Optional[int] = None) -> list[dict]:
                    - id (int): Governance analysis record ID
                    - run_id (int): Associated pipeline run ID
                    - timestamp (str): ISO format timestamp from pipeline run
-                   - risk (str): Risk level or assessment
-                   - escalation (str): Escalation decision or status
-                   - commentary (str): Additional governance commentary
+                   - risk (str): Risk level or assessment (legacy column)
+                   - escalation (str): Escalation decision or status (legacy column)
+                   - commentary (str): Additional governance commentary (legacy column)
+                   - governance_data (str): Full governance analysis as JSON string
                    Returns empty list if query fails or no records exist.
         
     Example:
@@ -561,7 +779,8 @@ def get_governance_history(limit: Optional[int] = None) -> list[dict]:
                     p.timestamp,
                     g.risk,
                     g.escalation,
-                    g.commentary
+                    g.commentary,
+                    g.governance_data
                 FROM governance_analysis g
                 JOIN pipeline_runs p ON g.run_id = p.id
                 ORDER BY p.timestamp DESC
@@ -582,7 +801,8 @@ def get_governance_history(limit: Optional[int] = None) -> list[dict]:
                     'timestamp': row['timestamp'],
                     'risk': row['risk'],
                     'escalation': row['escalation'],
-                    'commentary': row['commentary']
+                    'commentary': row['commentary'],
+                    'governance_data': row['governance_data']
                 })
             
             logger.info(f"Retrieved {len(results)} governance analysis record(s)" + (f" (limit={limit})" if limit else ""))
@@ -791,6 +1011,198 @@ def get_compliance_stats() -> dict:
             'runs_without_issues': 0,
             'avg_issues_per_run': 0.0
         }
+
+
+def get_severity_distribution() -> dict[str, int]:
+    """
+    Retrieve aggregated severity distribution across all pipeline runs.
+    
+    This function extracts severity distribution data from the audit_data JSON column
+    and aggregates it across all pipeline runs.
+    
+    Returns:
+        dict: Dictionary mapping severity levels to total counts across all runs.
+             Example: {'critical': 5, 'high': 12, 'medium': 8, 'low': 3}
+             Returns empty dict if query fails or no data exists.
+        
+    Example:
+        severity_dist = get_severity_distribution()
+        for severity, count in severity_dist.items():
+            print(f"{severity}: {count}")
+    """
+    import json
+    from collections import defaultdict
+    
+    try:
+        with get_connection() as conn:
+            cursor = conn.cursor()
+            
+            # Query to get all audit_data records
+            query = """
+                SELECT audit_data
+                FROM audit_summary
+                WHERE audit_data IS NOT NULL
+            """
+            
+            cursor.execute(query)
+            rows = cursor.fetchall()
+            
+            # Aggregate severity data
+            severity_totals = defaultdict(int)
+            
+            for row in rows:
+                try:
+                    audit_data = json.loads(row['audit_data'])
+                    
+                    # Extract severity distribution from stage_outputs
+                    stage_outputs = audit_data.get('stage_outputs', {})
+                    triage_stage = stage_outputs.get('triage_stage', {})
+                    severity_dist = triage_stage.get('severity_distribution', {})
+                    
+                    # Aggregate counts
+                    for severity, count in severity_dist.items():
+                        severity_totals[severity] += count
+                        
+                except (json.JSONDecodeError, KeyError, TypeError) as e:
+                    logger.warning(f"Failed to parse audit_data for severity distribution: {e}")
+                    continue
+            
+            result = dict(severity_totals)
+            logger.info(f"Retrieved severity distribution: {len(result)} severity levels")
+            return result
+            
+    except Exception as e:
+        logger.error(f"Failed to retrieve severity distribution: {e}")
+        return {}
+
+
+def get_category_distribution() -> dict[str, int]:
+    """
+    Retrieve aggregated category distribution across all pipeline runs.
+    
+    This function extracts category distribution data from the audit_data JSON column
+    and aggregates it across all pipeline runs.
+    
+    Returns:
+        dict: Dictionary mapping categories to total counts across all runs.
+             Example: {'network': 10, 'security': 8, 'performance': 5}
+             Returns empty dict if query fails or no data exists.
+        
+    Example:
+        category_dist = get_category_distribution()
+        for category, count in category_dist.items():
+            print(f"{category}: {count}")
+    """
+    import json
+    from collections import defaultdict
+    
+    try:
+        with get_connection() as conn:
+            cursor = conn.cursor()
+            
+            # Query to get all audit_data records
+            query = """
+                SELECT audit_data
+                FROM audit_summary
+                WHERE audit_data IS NOT NULL
+            """
+            
+            cursor.execute(query)
+            rows = cursor.fetchall()
+            
+            # Aggregate category data
+            category_totals = defaultdict(int)
+            
+            for row in rows:
+                try:
+                    audit_data = json.loads(row['audit_data'])
+                    
+                    # Extract category distribution from stage_outputs
+                    stage_outputs = audit_data.get('stage_outputs', {})
+                    triage_stage = stage_outputs.get('triage_stage', {})
+                    category_dist = triage_stage.get('category_distribution', {})
+                    
+                    # Aggregate counts
+                    for category, count in category_dist.items():
+                        category_totals[category] += count
+                        
+                except (json.JSONDecodeError, KeyError, TypeError) as e:
+                    logger.warning(f"Failed to parse audit_data for category distribution: {e}")
+                    continue
+            
+            result = dict(category_totals)
+            logger.info(f"Retrieved category distribution: {len(result)} categories")
+            return result
+            
+    except Exception as e:
+        logger.error(f"Failed to retrieve category distribution: {e}")
+        return {}
+
+
+def get_timeline_data() -> list[dict]:
+    """
+    Retrieve timeline data for incident visualization.
+    
+    This function extracts execution timestamps and incident counts from pipeline runs
+    to create timeline data for charting.
+    
+    Returns:
+        list[dict]: List of timeline records with keys:
+                   - timestamp (str): ISO format timestamp
+                   - date (str): Date in YYYY-MM-DD format
+                   - time (str): Time in HH:MM:SS format
+                   - incidents (int): Number of incidents in that run
+                   Returns empty list if query fails or no data exists.
+        
+    Example:
+        timeline = get_timeline_data()
+        for record in timeline:
+            print(f"{record['date']} {record['time']}: {record['incidents']} incidents")
+    """
+    from datetime import datetime
+    
+    try:
+        with get_connection() as conn:
+            cursor = conn.cursor()
+            
+            # Query to get pipeline runs ordered by timestamp
+            query = """
+                SELECT timestamp, alerts_count
+                FROM pipeline_runs
+                ORDER BY timestamp ASC
+            """
+            
+            cursor.execute(query)
+            rows = cursor.fetchall()
+            
+            # Build timeline data
+            timeline = []
+            
+            for row in rows:
+                timestamp_str = row['timestamp']
+                alerts_count = row['alerts_count']
+                
+                try:
+                    # Parse ISO 8601 timestamp with microseconds
+                    # Format: 2025-11-18T10:30:00.123456
+                    dt = datetime.fromisoformat(timestamp_str)
+                    
+                    timeline.append({
+                        'timestamp': timestamp_str,
+                        'date': dt.strftime('%Y-%m-%d'),
+                        'time': dt.strftime('%H:%M:%S'),
+                        'incidents': alerts_count
+                    })
+                except (ValueError, AttributeError) as e:
+                    logger.warning(f"Failed to parse timestamp '{timestamp_str}': {e}")
+                    continue
+            
+            logger.info(f"Retrieved timeline data: {len(timeline)} records")
+            return timeline
+            
+    except Exception as e:
+        logger.error(f"Failed to retrieve timeline data: {e}")
+        return []
 
 
 # ============================================================================

@@ -158,16 +158,38 @@ ui/
 - [x] Make Insights as the first default tab. 
 - [x] Add "Refresh" button to right side of the page after section name
 - [x] Add optional auto-refresh interval selector
+- [ ] Add a timeline filter to the Dashboard page:
+      - Implement a date range selector (start_date, end_date)
+      - Filter DB-backed dashboard metrics using the selected range
+      - Refresh the severity, category, and timeline charts based on filtered results
+      - Support “All Time” view
+      - Gracefully handle when no runs fall within the selected range
+
 
 ---
 
 ## **Phase 4 — Governance**
 
 * [x] Create `ui/pages/Governance.py`
-* [ ] Display risk score
-* [ ] Display escalation decision
-* [ ] Display compliance issues
-* [ ] Add collapsible governance details
+* [x] Display risk score
+* [x] Display escalation decision
+* [x] Fix Governance page to use values from governance_data JSON:
+      - Parse governance_data JSON for risk, escalation, commentary, compliance_issues, risk_score, extra_metadata, and additional_context
+      - Display Pipeline Run ID in the main metadata row
+      - Do not rely on legacy columns (risk, escalation, commentary)
+* [ ] Enhance Governance page with advanced analytics using DB-backed audit_data and governance_data:
+      - Add a governance history table (timestamp, risk, escalation, total incidents)
+      - Add trend visualizations (risk score, escalation frequency, compliance issues)
+      - Add triage & resolution distribution charts (severity, category, priority)
+      - Add a “Key Observations” insights section synthesizing recurring issues 
+      - Add expandable JSON viewers for each run
+      - Ensure all analytics use DB read APIs only (no JSON files)
+
+* [ ] Redesign Governance page layout:
+      - Add a “Summary Card” at the top showing the most recent run (risk, escalation, compliance)
+      - Separate interface into two tabs: Overview and Historical
+      - Move detailed history into collapsible sections with a “Show More History” toggle
+
 
 ---
 
