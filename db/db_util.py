@@ -1205,6 +1205,281 @@ def get_timeline_data() -> list[dict]:
         return []
 
 
+def get_risk_trend() -> list[dict]:
+    """
+    Retrieve risk trend data across pipeline runs for historical analysis.
+    
+    This function extracts risk levels from governance analysis records and associates
+    them with pipeline run timestamps to create a time-series of risk assessments.
+    
+    Returns:
+        list[dict]: List of risk trend records ordered by timestamp (ascending) with keys:
+                   - run_id (int): Pipeline run ID
+                   - timestamp (str): ISO format timestamp from pipeline run
+                   - risk (str): Risk level (low, medium, high, critical)
+                   - date (str): Date in YYYY-MM-DD format
+                   - time (str): Time in HH:MM:SS format
+                   Returns empty list if query fails or no data exists.
+        
+    Example:
+        risk_trend = get_risk_trend()
+        for record in risk_trend:
+            print(f"{record['date']} {record['time']}: Risk level {record['risk']}")
+    """
+    from datetime import datetime
+    
+    try:
+        with get_connection() as conn:
+            cursor = conn.cursor()
+            
+            # Query to get risk levels with timestamps from pipeline runs
+            query = """
+                SELECT 
+                    g.run_id,
+                    p.timestamp,
+                    g.risk
+                FROM governance_analysis g
+                JOIN pipeline_runs p ON g.run_id = p.id
+                WHERE g.risk IS NOT NULL
+                ORDER BY p.timestamp ASC
+            """
+            
+            cursor.execute(query)
+            rows = cursor.fetchall()
+            
+            # Build risk trend data
+            risk_trend = []
+            
+            for row in rows:
+                run_id = row['run_id']
+                timestamp_str = row['timestamp']
+                risk = row['risk']
+                
+                try:
+                    # Parse ISO 8601 timestamp with microseconds
+                    # Format: 2025-11-18T10:30:00.123456
+                    dt = datetime.fromisoformat(timestamp_str)
+                    
+                    risk_trend.append({
+                        'run_id': run_id,
+                        'timestamp': timestamp_str,
+                        'risk': risk,
+                        'date': dt.strftime('%Y-%m-%d'),
+                        'time': dt.strftime('%H:%M:%S')
+                    })
+                except (ValueError, AttributeError) as e:
+                    logger.warning(f"Failed to parse timestamp '{timestamp_str}' for run_id {run_id}: {e}")
+                    continue
+            
+            logger.info(f"Retrieved risk trend data: {len(risk_trend)} records")
+            return risk_trend
+            
+    except Exception as e:
+        logger.error(f"Failed to retrieve risk trend: {e}")
+        return []
+
+
+def get_compliance_trend() -> list[dict]:
+    """
+    Retrieve compliance trend data across pipeline runs for historical analysis.
+    
+    This function counts the number of compliance issues per pipeline run and associates
+    them with pipeline run timestamps to create a time-series of compliance issue counts.
+    
+    Returns:
+        list[dict]: List of compliance trend records ordered by timestamp (ascending) with keys:
+                   - run_id (int): Pipeline run ID
+                   - timestamp (str): ISO format timestamp from pipeline run
+                   - issue_count (int): Number of compliance issues in that run
+                   - date (str): Date in YYYY-MM-DD format
+                   - time (str): Time in HH:MM:SS format
+                   Returns empty list if query fails or no data exists.
+        
+    Example:
+        compliance_trend = get_compliance_trend()
+        for record in compliance_trend:
+            print(f"{record['date']} {record['time']}: {record['issue_count']} compliance issues")
+    """
+    from datetime import datetime
+    
+    try:
+        with get_connection() as conn:
+            cursor = conn.cursor()
+            
+            # Query to get compliance issue counts per run with timestamps
+            query = """
+                SELECT 
+                    p.id as run_id,
+                    p.timestamp,
+                    COALESCE(COUNT(c.id), 0) as issue_count
+                FROM pipeline_runs p
+                LEFT JOIN compliance_issues c ON p.id = c.run_id
+                GROUP BY p.id, p.timestamp
+                ORDER BY p.timestamp ASC
+            """
+            
+            cursor.execute(query)
+            rows = cursor.fetchall()
+            
+            # Build compliance trend data
+            compliance_trend = []
+            
+            for row in rows:
+                run_id = row['run_id']
+                timestamp_str = row['timestamp']
+                issue_count = row['issue_count']
+                
+                try:
+                    # Parse ISO 8601 timestamp with microseconds
+                    # Format: 2025-11-18T10:30:00.123456
+                    dt = datetime.fromisoformat(timestamp_str)
+                    
+                    compliance_trend.append({
+                        'run_id': run_id,
+                        'timestamp': timestamp_str,
+                        'issue_count': issue_count,
+                        'date': dt.strftime('%Y-%m-%d'),
+                        'time': dt.strftime('%H:%M:%S')
+                    })
+                except (ValueError, AttributeError) as e:
+                    logger.warning(f"Failed to parse timestamp '{timestamp_str}' for run_id {run_id}: {e}")
+                    continue
+            
+            logger.info(f"Retrieved compliance trend data: {len(compliance_trend)} records")
+            return compliance_trend
+            
+    except Exception as e:
+        logger.error(f"Failed to retrieve compliance trend: {e}")
+        return []
+
+
+def get_escalation_text_counts() -> dict[str, int]:
+    """
+    Retrieve aggregated escalation text counts across all governance analyses.
+    
+    This function uses SQL GROUP BY to count occurrences of each unique escalation
+    recommendation across all pipeline runs.
+    
+    Returns:
+        dict: Dictionary mapping escalation text to occurrence counts.
+             Example: {
+                 'None required': 5,
+                 'Monitor for recurring patterns': 3,
+                 'Review with team lead if issues persist': 2,
+                 'Escalate to on-call engineer': 1
+             }
+             Returns empty dict if query fails or no data exists.
+        
+    Example:
+        escalation_counts = get_escalation_text_counts()
+        for escalation_text, count in escalation_counts.items():
+            print(f"{escalation_text}: {count} occurrences")
+    """
+    try:
+        with get_connection() as conn:
+            cursor = conn.cursor()
+            
+            # Use SQL GROUP BY to count escalation occurrences
+            query = """
+                SELECT escalation, COUNT(*) as count
+                FROM governance_analysis
+                WHERE escalation IS NOT NULL AND escalation != ''
+                GROUP BY escalation
+                ORDER BY count DESC
+            """
+            
+            cursor.execute(query)
+            rows = cursor.fetchall()
+            
+            # Build result dictionary
+            result = {}
+            for row in rows:
+                result[row['escalation']] = row['count']
+            
+            logger.info(f"Retrieved escalation text counts: {len(result)} unique escalation types")
+            return result
+            
+    except Exception as e:
+        logger.error(f"Failed to retrieve escalation text counts: {e}")
+        return {}
+
+
+def get_recent_runs(limit: int = 10) -> list[dict]:
+    """
+    Retrieve recent pipeline run metadata for UI and InsightsAgent inputs.
+    
+    This function returns recent pipeline runs with their associated audit summaries
+    and governance analyses, ordered by timestamp descending (most recent first).
+    Uses pure SQL ordering + LIMIT for efficient retrieval.
+    
+    Args:
+        limit: Maximum number of recent runs to return. Defaults to 10.
+    
+    Returns:
+        list[dict]: List of recent pipeline run records with keys:
+                   - run_id (int): Pipeline run ID
+                   - timestamp (str): ISO format timestamp from pipeline run
+                   - alerts_count (int): Number of alerts processed in this run
+                   - raw_data_path (str): Path to raw data file (may be None)
+                   - audit_data (str): Full audit summary as JSON string (may be None)
+                   - governance_data (str): Full governance analysis as JSON string (may be None)
+                   Returns empty list if query fails or no data exists.
+        
+    Example:
+        # Get the 10 most recent runs
+        recent = get_recent_runs()
+        
+        # Get the 5 most recent runs
+        recent = get_recent_runs(limit=5)
+        
+        # Process recent runs for insights
+        for run in recent:
+            print(f"Run {run['run_id']} at {run['timestamp']}: {run['alerts_count']} alerts")
+    """
+    try:
+        with get_connection() as conn:
+            cursor = conn.cursor()
+            
+            # Query to get recent pipeline runs with associated audit and governance data
+            # Uses LEFT JOIN to include runs even if they don't have audit/governance data yet
+            query = """
+                SELECT 
+                    p.id as run_id,
+                    p.timestamp,
+                    p.alerts_count,
+                    p.raw_data_path,
+                    a.audit_data,
+                    g.governance_data
+                FROM pipeline_runs p
+                LEFT JOIN audit_summary a ON p.id = a.run_id
+                LEFT JOIN governance_analysis g ON p.id = g.run_id
+                ORDER BY p.timestamp DESC
+                LIMIT ?
+            """
+            
+            cursor.execute(query, (limit,))
+            rows = cursor.fetchall()
+            
+            # Build result list
+            results = []
+            for row in rows:
+                results.append({
+                    'run_id': row['run_id'],
+                    'timestamp': row['timestamp'],
+                    'alerts_count': row['alerts_count'],
+                    'raw_data_path': row['raw_data_path'],
+                    'audit_data': row['audit_data'],
+                    'governance_data': row['governance_data']
+                })
+            
+            logger.info(f"Retrieved {len(results)} recent pipeline run(s) (limit={limit})")
+            return results
+            
+    except Exception as e:
+        logger.error(f"Failed to retrieve recent runs: {e}")
+        return []
+
+
 # ============================================================================
 # Database Initialization
 # ============================================================================

@@ -88,14 +88,35 @@ Public APIs to be implemented (names only; implementation is part of tasks):
 * get_compliance_stats()
 * get_insights_history(run_id)
 
-**Required Aggregation APIs:**
-These functions compute raw statistics. They do not produce insights.
-- get_risk_trend()
-- get_compliance_trend()
-- get_escalation_text_counts()
-- get_recent_runs()
-- get_category_distribution()
-- get_severity_distribution()
+## Required Aggregation APIs
+
+All aggregation queries (counts, grouping, trend extraction) must be performed in SQL rather than Python loops.  
+These functions compute raw statistics and time-series data. They do not produce insights.
+
+* get_risk_trend()  
+  - Returns list of {run_id, timestamp, risk, date, time}, ordered by time.  
+  - Uses SQL to extract risk column and join with pipeline_runs.
+
+* get_compliance_trend()  
+  - Returns compliance issue counts per run.  
+  - Uses SQL LEFT JOIN + GROUP BY to compute per-run issue_count.
+
+* get_escalation_text_counts()  
+  - Returns dictionary mapping escalation text → occurrence count.  
+  - Uses SQL GROUP BY escalation.
+
+* get_recent_runs()  
+  - Returns recent pipeline run metadata for UI and InsightsAgent inputs.  
+  - Pure SQL ordering + LIMIT.
+
+* get_category_distribution()  
+  - Returns category counts aggregated across audit summaries.  
+  - Uses SQL JSON extraction + grouping.
+
+* get_severity_distribution()  
+  - Returns severity counts aggregated across audit summaries.  
+  - Uses SQL JSON extraction + grouping.
+
 
 DB writes must be transactional and must log (to pipeline.log) any DB errors without blocking the pipeline run.
 
@@ -191,11 +212,11 @@ DB writes must be transactional and must log (to pipeline.log) any DB errors wit
 
 ## Phase 6 - Governance Analytics
 - [x] Implement get_risk_trend()
-- [ ] Implement get_compliance_trend()
-- [ ] Implement get_escalation_text_counts()
-- [ ] Implement get_recent_runs()
-- [ ] Implement get_category_distribution()
-- [ ] Implement get_severity_distribution()
+- [x] Implement get_compliance_trend()
+- [x] Implement get_escalation_text_counts()
+- [x] Implement get_recent_runs()
+- [x] Implement get_category_distribution()
+- [x] Implement get_severity_distribution()
 
 ## Phase 7 - Governance Insights
 - [ ] Add insights_history table

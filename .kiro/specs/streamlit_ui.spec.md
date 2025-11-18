@@ -226,13 +226,13 @@ Governance Page
       - Parse governance_data JSON for risk, escalation, commentary, compliance_issues, risk_score, extra_metadata, and additional_context
       - Display Pipeline Run ID in the main metadata row
       - Do not rely on legacy columns (risk, escalation, commentary)
-* [ ] Enhance Governance analytics UI:
+* [x] Enhance Governance analytics UI:
       - Add governance history table
       - Add risk/escalation/compliance trend charts
       - Add severity & category distribution charts
       - Add Key Observations summary
       - Add per-run JSON expanders
-* [ ] Redesign Governance layout (Summary Card, Overview tab, Historical tab, collapsible history)
+* [x] Redesign Governance layout (Summary Card, Overview tab, Historical tab, collapsible history)
 
 ---
 ## **Phase 5 — Governance Insights**
