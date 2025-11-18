@@ -148,12 +148,12 @@ DB writes must be transactional and must log (to pipeline.log) any DB errors wit
 
 ## Phase 4 — Orchestrator Integration
 
-* [ ] Update orchestrator to call DB write APIs at appropriate pipeline stages:
-* [ ] Create pipeline_runs entry at pipeline start or after OpsLog
-* [ ] Write audit_summary after OpsLog
-* [ ] Write governance_analysis and compliance issues after Governance step
-* [ ] Write notification_events after Notification step
-* [ ] Ensure DB write failures are logged and set a flag in the returned pipeline output but do not abort pipeline execution
+* [x] Update orchestrator to call DB write APIs at appropriate pipeline stages:
+  * Create pipeline_runs entry at pipeline start or after OpsLog
+  * Write audit_summary after OpsLog
+  * Write governance_analysis and compliance issues after Governance step
+  * Write notification_events after Notification step
+* [x] Ensure DB write failures are logged and set a flag in the returned pipeline output but do not abort pipeline execution
 
 ## Phase 5 — UI Integration
 

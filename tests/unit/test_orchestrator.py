@@ -134,14 +134,24 @@ class TestPipelineExecutor(unittest.TestCase):
             self.executor._validate_opslog_output([])
         self.assertIn("must return a dict", str(context.exception))
     
+    @patch('orchestrator.orchestrator.db_util')
+    @patch('orchestrator.orchestrator.NotificationAgent')
     @patch('orchestrator.orchestrator.MonitorAgent')
     @patch('orchestrator.orchestrator.LLMAlertSummaryAgent')
     @patch('orchestrator.orchestrator.TriageAgent')
     @patch('orchestrator.orchestrator.LLMResolutionAgent')
     @patch('orchestrator.orchestrator.OpsLogAgent')
     @patch('orchestrator.orchestrator.LLMGovernanceAgent')
-    def test_pipeline_sequential_execution(self, mock_governance, mock_opslog, mock_llm_resolution, mock_triage, mock_llm_summary, mock_monitor):
+    def test_pipeline_sequential_execution(self, mock_governance, mock_opslog, mock_llm_resolution, mock_triage, mock_llm_summary, mock_monitor, mock_notification, mock_db):
         """Test that pipeline executes agents in strict sequential order."""
+        # Mock DB operations
+        mock_db.insert_pipeline_run.return_value = 1
+        mock_db.insert_audit_summary.return_value = True
+        mock_db.insert_governance_analysis.return_value = True
+        mock_db.insert_compliance_issues.return_value = True
+        mock_db.insert_notification_event.return_value = True
+        mock_db.get_connection.return_value.__enter__ = Mock()
+        mock_db.get_connection.return_value.__exit__ = Mock()
         # Setup mock return values
         mock_monitor_instance = Mock()
         mock_monitor_instance.run.return_value = [
@@ -202,7 +212,7 @@ class TestPipelineExecutor(unittest.TestCase):
         mock_opslog.return_value = mock_opslog_instance
         
         mock_governance_instance = Mock()
-        mock_governance_instance.run.return_value = {
+        governance_output = {
             'audit_summary': {
                 'status': 'logged',
                 'count': 1,
@@ -215,7 +225,22 @@ class TestPipelineExecutor(unittest.TestCase):
                 'commentary': 'Test commentary'
             }
         }
+        mock_governance_instance.run.return_value = governance_output
         mock_governance.return_value = mock_governance_instance
+        
+        mock_notification_instance = Mock()
+        mock_notification_instance.run.return_value = {
+            'governance_output': governance_output,
+            'notification_status': 'sent',
+            'notifications_sent': [
+                {
+                    'channel': 'pushover',
+                    'status': 'success',
+                    'response': 'Message sent'
+                }
+            ]
+        }
+        mock_notification.return_value = mock_notification_instance
         
         # Execute pipeline
         executor = PipelineExecutor()
@@ -228,13 +253,32 @@ class TestPipelineExecutor(unittest.TestCase):
         mock_llm_resolution_instance.run.assert_called_once()
         mock_opslog_instance.run.assert_called_once()
         mock_governance_instance.run.assert_called_once()
+        mock_notification_instance.run.assert_called_once()
         
-        # Verify result structure (now returns governance output)
-        self.assertIn('audit_summary', result)
-        self.assertIn('governance_analysis', result)
-        self.assertEqual(result['audit_summary']['status'], 'logged')
-        self.assertEqual(result['audit_summary']['count'], 1)
-        self.assertEqual(result['governance_analysis']['risk'], 'low')
+        # Verify DB write calls
+        mock_db.insert_pipeline_run.assert_called_once()
+        mock_db.insert_audit_summary.assert_called_once_with(1, {
+            'status': 'logged',
+            'count': 1,
+            'timestamp': '2025-11-15 10:00:00'
+        })
+        mock_db.insert_governance_analysis.assert_called_once()
+        mock_db.insert_compliance_issues.assert_called_once()
+        mock_db.insert_notification_event.assert_called_once()
+        
+        # Verify result structure (now returns notification output with db_write_status)
+        self.assertIn('governance_output', result)
+        self.assertIn('notification_status', result)
+        self.assertIn('notifications_sent', result)
+        self.assertIn('db_write_status', result)
+        self.assertIn('run_id', result)
+        self.assertEqual(result['governance_output']['audit_summary']['status'], 'logged')
+        self.assertEqual(result['governance_output']['audit_summary']['count'], 1)
+        self.assertEqual(result['governance_output']['governance_analysis']['risk'], 'low')
+        self.assertEqual(result['notification_status'], 'sent')
+        self.assertEqual(result['run_id'], 1)
+        self.assertTrue(result['db_write_status']['pipeline_run'])
+        self.assertTrue(result['db_write_status']['audit_summary'])
 
 
 if __name__ == '__main__':
