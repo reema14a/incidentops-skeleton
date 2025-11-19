@@ -60,134 +60,72 @@ class OpenAIClient:
         # Mark as initialized
         OpenAIClient._initialized = True
 
-    # @classmethod
-    # def _setup_logging(cls):
-    #     """Set up logging configuration with rotating file handler.
-        
-    #     Uses the same logging configuration as BaseAgent to ensure
-    #     all LLM-related logs are written to logs/pipeline.log.
-    #     """
-    #     if cls._logger is not None:
-    #         return
-        
-    #     # Create logs directory if it doesn't exist
-    #     import os
-    #     log_dir = "logs"
-    #     if not os.path.exists(log_dir):
-    #         os.makedirs(log_dir)
-        
-    #     # Create logger
-    #     cls._logger = logging.getLogger("IncidentOps.LLM")
-    #     cls._logger.setLevel(logging.INFO)
-        
-    #     # Disable propagation to parent logger to avoid duplicate messages
-    #     cls._logger.propagate = False
-        
-    #     # Avoid duplicate handlers
-    #     if cls._logger.handlers:
-    #         return
-        
-    #     # Console handler
-    #     console_handler = logging.StreamHandler()
-    #     console_handler.setLevel(logging.INFO)
-    #     console_formatter = logging.Formatter('%(message)s')
-    #     console_handler.setFormatter(console_formatter)
-        
-    #     # Rotating file handler (max 5 MB, 3 backups)
-    #     log_file = os.path.join(log_dir, "pipeline.log")
-    #     file_handler = RotatingFileHandler(
-    #         log_file,
-    #         maxBytes=5 * 1024 * 1024,  # 5 MB
-    #         backupCount=3
-    #     )
-    #     file_handler.setLevel(logging.INFO)
-    #     file_formatter = logging.Formatter(
-    #         '%(asctime)s - %(message)s',
-    #         datefmt='%Y-%m-%d %H:%M:%S'
-    #     )
-    #     file_handler.setFormatter(file_formatter)
-        
-    #     # Add handlers to logger
-    #     cls._logger.addHandler(console_handler)
-    #     cls._logger.addHandler(file_handler)
-
     def _log_initialization(self):
         """Log OpenAI client initialization details."""
         status = "enabled" if self.enabled else "disabled (mock mode)"
         key_status = "present" if self.api_key else "missing"
         self._logger.info(f"[OpenAIClient] Initialized with model={self.model}, status={status}, api_key={key_status}")
 
-    def _log(self, msg: str):
-        self._logger.info(f"[OpenAIClient] {msg}")
+    def _log(self, level: str, event: str, **fields):
+        """
+        Unified structured logger.
+        Example:
+            self._log("info", "REQUEST", model=self.model, prompt_length=len(prompt))
+        """
+        parts = [f"[OpenAIClient] {event}"]
+        for k, v in fields.items():
+            parts.append(f"{k}={v}")
+        message = " | ".join(parts)
+        getattr(self._logger, level)(message)
 
-    def _warn(self, msg: str):
-        self._logger.warning(f"[OpenAIClient] {msg}")
-
-    def _error(self, msg: str):
-        self._logger.error(f"[OpenAIClient] {msg}")
-
+    def _preview(self, text: str, limit: int = 120) -> str:
+        """Return a clean preview with newlines removed."""
+        clean = text.replace("\n", " ")
+        return clean[:limit] + ("..." if len(clean) > limit else "")
 
     def _log_request(self, prompt: str):
-        """Log request metadata.
-        
-        Args:
-            prompt (str): The prompt being sent to the LLM.
-        """
-        prompt_length = len(prompt)
-        prompt_preview = prompt[:100].replace('\n', ' ') + ('...' if len(prompt) > 100 else '')
-        self._logger.info(f"[OpenAIClient] REQUEST | model={self.model} | prompt_length={prompt_length} | preview='{prompt_preview}'")
+        self._log(
+            "info",
+            "REQUEST",
+            model=self.model,
+            prompt_length=len(prompt),
+            preview=self._preview(prompt)
+        )
 
-    def _log_response(self, response_content: str, latency_ms: int, usage: dict = None):
-        """Log response metadata.
-        
-        Args:
-            response_content (str): The response content from the LLM.
-            latency_ms (int): Request latency in milliseconds.
-            usage (dict): Token usage information from the API response.
-        """
-        response_length = len(response_content)
-        response_preview = response_content[:100].replace('\n', ' ') + ('...' if len(response_content) > 100 else '')
-        
-        usage_str = ""
-        if usage:
-            usage_str = f" | tokens={{prompt={usage.get('prompt_tokens', 0)}, completion={usage.get('completion_tokens', 0)}, total={usage.get('total_tokens', 0)}}}"
-        
-        self._logger.info(f"[OpenAIClient] RESPONSE | latency={latency_ms}ms | response_length={response_length}{usage_str} | preview='{response_preview}'")
+    def _log_response(self, response: str, latency_ms: int, usage: dict | None):
+        usage_str = (
+            f"prompt={usage.get('prompt_tokens',0)}, "
+            f"completion={usage.get('completion_tokens',0)}, "
+            f"total={usage.get('total_tokens',0)}"
+            if usage else "n/a"
+        )
 
-    def _log_json_parsing(self, response_content: str, parsed_data: dict = None, success: bool = True):
-        """Log JSON parsing status.
-        
-        Args:
-            response_content (str): The raw response content.
-            parsed_data (dict): The parsed JSON data if successful.
-            success (bool): Whether parsing was successful.
-        """
-        if success and parsed_data:
-            keys = list(parsed_data.keys())
-            self._logger.info(f"[OpenAIClient] JSON_PARSE | status=success | keys={keys}")
+        self._log(
+            "info",
+            "RESPONSE",
+            latency_ms=latency_ms,
+            response_length=len(response),
+            tokens=usage_str,
+            preview=self._preview(response)
+        )
+
+    def _log_json_parsing(self, response: str, parsed: dict | None):
+        if parsed:
+            self._log("info", "JSON_PARSE", status="success", keys=list(parsed.keys()))
         else:
-            preview = response_content[:150].replace('\n', ' ') + ('...' if len(response_content) > 150 else '')
-            self._logger.warning(f"[OpenAIClient] JSON_PARSE | status=failed | raw_preview='{preview}'")
+            self._log("warning", "JSON_PARSE", status="failed", preview=self._preview(response,150))
 
-    def _log_fallback(self, reason: str, fallback_data: dict):
-        """Log fallback behavior when normal processing fails.
-        
-        Args:
-            reason (str): The reason for the fallback.
-            fallback_data (dict): The fallback data being returned.
-        """
-        self._logger.warning(f"[OpenAIClient] FALLBACK | reason={reason} | fallback_data={fallback_data}")
+    def _log_fallback(self, reason: str, data: dict):
+        self._log("warning", "FALLBACK", reason=reason, data=data)
 
     def _log_error(self, error: Exception, context: str = ""):
-        """Log error details.
-        
-        Args:
-            error (Exception): The exception that occurred.
-            context (str): Additional context about where the error occurred.
-        """
-        error_type = type(error).__name__
-        error_msg = str(error)
-        self._logger.error(f"[OpenAIClient] ERROR | type={error_type} | message='{error_msg}' | context={context}")
+        self._log(
+            "error",
+            "ERROR",
+            type=type(error).__name__,
+            message=str(error),
+            context=context
+        )
 
     def generate(self, prompt: str) -> str:
         """Generate a response from the OpenAI API with structured logging.
@@ -232,9 +170,9 @@ class OpenAIClient:
             # Attempt to parse as JSON for logging purposes
             parsed_json = extract_json_block(response_content)
             if parsed_json:
-                self._log_json_parsing(response_content, parsed_json, success=True)
+                self._log_json_parsing(response_content, parsed_json)
             else:
-                self._log_json_parsing(response_content, success=False)
+                self._log_json_parsing(response_content, None)
             
             return response_content
             
