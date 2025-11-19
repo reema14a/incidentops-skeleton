@@ -86,6 +86,7 @@ class TestDatabaseInitialization:
             'governance_analysis',
             'compliance_issues',
             'notification_events',
+            'insights_history',
             'migrations'
         ]
         
@@ -162,13 +163,13 @@ class TestDatabaseInitialization:
         initialize_database()
         initialize_database()
         
-        # Verify migrations table has correct number of entries (v1, v2, v3)
+        # Verify migrations table has correct number of entries (v1, v2, v3, v4)
         with get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("SELECT COUNT(*) as count FROM migrations")
             count = cursor.fetchone()['count']
             
-            assert count == 3, f"Expected 3 migrations (v1, v2, v3), found {count}"
+            assert count == 4, f"Expected 4 migrations (v1, v2, v3, v4), found {count}"
     
     def test_connection_context_manager(self):
         """Test that connection context manager works correctly."""
@@ -218,7 +219,7 @@ class TestDatabaseInitialization:
         
         with get_connection() as conn:
             version = _get_current_version(conn)
-            assert version == 3  # Current schema version after v1, v2, v3 migrations
+            assert version == 4  # Current schema version after v1, v2, v3, v4 migrations
     
     def test_database_path_from_settings(self):
         """Test that database path is correctly retrieved from settings."""

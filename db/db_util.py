@@ -17,13 +17,18 @@ from datetime import datetime
 
 from config.settings_loader import get_settings
 
+class DBPrefixFilter(logging.Filter):
+    def filter(self, record):
+        record.msg = f"[Database] {record.msg}"
+        return True
+
 logger = logging.getLogger("IncidentOps.db")
 logger.setLevel(logging.INFO)
 logger.propagate = True
-
+logger.addFilter(DBPrefixFilter())
 
 # Schema version for migration tracking
-CURRENT_SCHEMA_VERSION = 3
+CURRENT_SCHEMA_VERSION = 4
 
 
 class DatabaseError(Exception):
@@ -405,6 +410,45 @@ def _apply_migration_v3(conn: sqlite3.Connection) -> None:
     logger.info("Applied migration v3: Normalized all timestamps to ISO 8601 with microseconds")
 
 
+def _apply_migration_v4(conn: sqlite3.Connection) -> None:
+    """
+    Apply schema version 4: Add insights_history table.
+    
+    This migration creates the insights_history table to store GovernanceInsightsAgent
+    outputs for historical UI display.
+    
+    Table structure:
+    - id: integer primary key autoincrement
+    - run_id: integer (foreign key to pipeline_runs)
+    - insights_data: text (JSON-encoded insights)
+    - timestamp: text (ISO 8601 format with microseconds)
+    
+    Args:
+        conn: Database connection.
+    """
+    cursor = conn.cursor()
+    
+    # Create insights_history table
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS insights_history (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            run_id INTEGER NOT NULL,
+            insights_data TEXT NOT NULL,
+            timestamp TEXT NOT NULL,
+            FOREIGN KEY (run_id) REFERENCES pipeline_runs(id)
+        )
+    """)
+    
+    # Record migration
+    cursor.execute("""
+        INSERT INTO migrations (version, description)
+        VALUES (?, ?)
+    """, (4, "Add insights_history table for GovernanceInsightsAgent outputs"))
+    
+    conn.commit()
+    logger.info("Applied migration v4: Created insights_history table")
+
+
 def _run_migrations(conn: sqlite3.Connection) -> None:
     """
     Run all pending migrations in order.
@@ -419,8 +463,9 @@ def _run_migrations(conn: sqlite3.Connection) -> None:
         1: _apply_migration_v1,
         2: _apply_migration_v2,
         3: _apply_migration_v3,
+        4: _apply_migration_v4,
         # Future migrations can be added here:
-        # 4: _apply_migration_v4,
+        # 5: _apply_migration_v5,
     }
     
     # Apply pending migrations
@@ -712,6 +757,57 @@ def insert_notification_event(run_id: int, channel: str, status: str, response: 
             
     except Exception as e:
         logger.error(f"Failed to insert notification event for run_id {run_id}: {e}")
+        return False
+
+
+def insert_insights_history(run_id: int, insights_json: dict) -> bool:
+    """
+    Insert a governance insights history record for a pipeline run.
+    
+    This function stores the output from GovernanceInsightsAgent for historical
+    UI display and trend analysis.
+    
+    Args:
+        run_id: The pipeline run ID to associate this insights record with.
+        insights_json: Dictionary containing governance insights data. This is the
+                      full output from GovernanceInsightsAgent and will be stored
+                      as JSON in the insights_data column.
+                   
+    Returns:
+        bool: True if insertion succeeded, False otherwise.
+        
+    Example:
+        success = insert_insights_history(
+            run_id=1,
+            insights_json={
+                "summary": "System stability improving",
+                "trends": ["Decreasing incident count", "Improved response times"],
+                "recommendations": ["Continue monitoring", "Review automation rules"]
+            }
+        )
+    """
+    import json
+    
+    try:
+        with get_connection() as conn:
+            cursor = conn.cursor()
+            
+            # Serialize the insights_json to JSON string
+            insights_data_json = json.dumps(insights_json)
+            
+            # Get current timestamp in ISO 8601 format with microseconds
+            timestamp = datetime.utcnow().isoformat(timespec="microseconds")
+            
+            cursor.execute("""
+                INSERT INTO insights_history (run_id, insights_data, timestamp)
+                VALUES (?, ?, ?)
+            """, (run_id, insights_data_json, timestamp))
+            
+            logger.info(f"Inserted insights history for run_id {run_id} at {timestamp}")
+            return True
+            
+    except Exception as e:
+        logger.error(f"Failed to insert insights history for run_id {run_id}: {e}")
         return False
 
 
@@ -1509,6 +1605,73 @@ def get_recent_runs(limit: int = 10) -> list[dict]:
             
     except Exception as e:
         logger.error(f"Failed to retrieve recent runs: {e}")
+        return []
+
+
+def get_insights_history(limit: Optional[int] = None) -> list[dict]:
+    """
+    Retrieve governance insights history records from the database.
+    
+    This function returns historical governance insights generated by the
+    GovernanceInsightsAgent, ordered by timestamp descending (most recent first).
+    
+    Args:
+        limit: Optional maximum number of records to return. If None, returns all records.
+               Records are ordered by timestamp descending (most recent first).
+    
+    Returns:
+        list[dict]: List of insights history records as dictionaries with keys:
+                   - id (int): Insights history record ID
+                   - run_id (int): Associated pipeline run ID
+                   - insights_data (str): Full insights as JSON string
+                   - timestamp (str): ISO format timestamp when insights were generated
+                   Returns empty list if query fails or no records exist.
+        
+    Example:
+        # Get all insights history
+        all_insights = get_insights_history()
+        
+        # Get the 20 most recent insights
+        recent_insights = get_insights_history(limit=20)
+        
+        # Process insights
+        for insight in recent_insights:
+            print(f"Insights for run {insight['run_id']} at {insight['timestamp']}")
+            insights_data = json.loads(insight['insights_data'])
+            print(f"Summary: {insights_data.get('summary', 'N/A')}")
+    """
+    try:
+        with get_connection() as conn:
+            cursor = conn.cursor()
+            
+            # Build query with optional limit
+            query = """
+                SELECT id, run_id, insights_data, timestamp
+                FROM insights_history
+                ORDER BY timestamp DESC
+            """
+            
+            if limit is not None:
+                query += f" LIMIT {int(limit)}"
+            
+            cursor.execute(query)
+            rows = cursor.fetchall()
+            
+            # Convert Row objects to dictionaries
+            results = []
+            for row in rows:
+                results.append({
+                    'id': row['id'],
+                    'run_id': row['run_id'],
+                    'insights_data': row['insights_data'],
+                    'timestamp': row['timestamp']
+                })
+            
+            logger.info(f"Retrieved {len(results)} insights history record(s)" + (f" (limit={limit})" if limit else ""))
+            return results
+            
+    except Exception as e:
+        logger.error(f"Failed to retrieve insights history: {e}")
         return []
 
 

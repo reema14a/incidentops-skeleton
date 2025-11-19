@@ -219,11 +219,9 @@ DB writes must be transactional and must log (to pipeline.log) any DB errors wit
 - [x] Implement get_severity_distribution()
 
 ## Phase 7 - Governance Insights
-- [ ] Add insights_history table
-- [ ] Implement insert_insights_history(run_id, insights_json)
-- [ ] Implement get_insights_history(limit)
-* [ ] Persist GovernanceInsightsAgent output into insights_history
-    - Ensure orchestrator writes insights_data + timestamp to DB
+- [x] Add insights_history table
+- [x] Implement insert_insights_history(run_id, insights_json)
+- [x] Implement get_insights_history(limit)
 
 Ensure all trend and insight queries are DB-backed (no file reads)
 

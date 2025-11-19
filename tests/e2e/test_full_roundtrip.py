@@ -6,7 +6,7 @@ class TestFullPipeline(unittest.TestCase):
     def test_full_pipeline_execution(self):
         """
         Ensures the entire IncidentOps pipeline runs end-to-end using sample logs.
-        Tests all 7 stages including LLMGovernanceAgent and NotificationAgent.
+        Tests all 8 stages including LLMGovernanceAgent, GovernanceInsightsAgent, and NotificationAgent.
         """
         result = run(test_mode=True)
 
@@ -14,6 +14,7 @@ class TestFullPipeline(unittest.TestCase):
         self.assertIn("governance_output", result)
         self.assertIn("notification_status", result)
         self.assertIn("notifications_sent", result)
+        self.assertIn("insights", result)
         
         # Verify governance output (passed through from GovernanceAgent)
         governance_output = result["governance_output"]
@@ -55,4 +56,28 @@ class TestFullPipeline(unittest.TestCase):
         
         # Verify notifications_sent is a list
         self.assertIsInstance(result["notifications_sent"], list)
+        
+        # Verify insights structure (from GovernanceInsightsAgent)
+        insights = result["insights"]
+        self.assertIn("trend_summary", insights)
+        self.assertIsInstance(insights["trend_summary"], str)
+        
+        self.assertIn("risk_trend", insights)
+        self.assertIsInstance(insights["risk_trend"], str)
+        
+        self.assertIn("compliance_trend", insights)
+        self.assertIsInstance(insights["compliance_trend"], str)
+        
+        self.assertIn("recurring_issues", insights)
+        self.assertIsInstance(insights["recurring_issues"], list)
+        
+        self.assertIn("category_hotspots", insights)
+        # category_hotspots can be either a list or a dict (LLM may return either format)
+        self.assertIn(type(insights["category_hotspots"]), [list, dict])
+        
+        self.assertIn("recommendations", insights)
+        self.assertIsInstance(insights["recommendations"], list)
+        
+        self.assertIn("anomaly_detection", insights)
+        self.assertIsInstance(insights["anomaly_detection"], str)
 

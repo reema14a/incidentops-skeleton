@@ -51,10 +51,10 @@ Pipeline order:
 ## GovernanceInsightsAgent (AI, NEW)
 - Analyzes historical governance data stored in the DB.
 - Aggregation is performed by DB utility functions; the agent only interprets aggregated data.
-<!-- - Inputs: get_governance_history(), get_pipeline_runs(), get_compliance_stats(), get_category_distribution(), get_severity_distribution(). -->
 - Inputs: get_risk_trend(), get_compliance_trend(), get_escalation_text_counts(), get_recent_runs(),get_category_distribution(), get_severity_distribution()
 - Outputs JSON with: trend_summary, risk_trend, compliance_trend, recurring_issues, category_hotspots, recommendations, anomaly_detection.
 - Runs after GovernanceAgent and before NotificationAgent.
+- Persist GovernanceInsightsAgent output into insights_history ( ensure orchestrator writes insights_data + timestamp to DB)
 
 ## Notifications
 - Use MCP tools to send notifications.
@@ -140,9 +140,9 @@ Pipeline order:
 ---
 
 ## GovernanceInsightsAgent Tasks (Phase 2)
-- [ ] Implement GovernanceInsightsAgent (LLM-based historical analysis)
-- [ ] Add orchestrator step after LLMGovernanceAgent
-- [ ] Orchestrator must call new DB aggregation APIs and pass results to the agent
+- [x] Implement GovernanceInsightsAgent (LLM-based historical analysis)
+- [x] Add orchestrator step after LLMGovernanceAgent
+- [x] Orchestrator must call new DB aggregation APIs and pass results to the agent
 
 ---
 

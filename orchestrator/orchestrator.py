@@ -8,7 +8,8 @@ This module ensures strict sequential data flow across all agents:
 4. LLMResolutionAgent → resolution plans with LLM-generated recommendations and summary
 5. OpsLogAgent → audit summary (dict with status, count, timestamp)
 6. LLMGovernanceAgent → governance analysis (risk scoring, escalation, compliance)
-7. NotificationAgent → notification delivery status (sends alerts via MCP)
+7. GovernanceInsightsAgent → historical insights (trend analysis, recommendations)
+8. NotificationAgent → notification delivery status (sends alerts via MCP)
 
 Each stage validates input/output data structures to prevent invalid data flow.
 Pipeline execution stops immediately if any validation fails.
@@ -22,6 +23,7 @@ from agents.triage_agent import TriageAgent
 from agents.llm_resolution_agent import LLMResolutionAgent
 from agents.opslog_agent import OpsLogAgent
 from agents.llm_governance_agent import LLMGovernanceAgent
+from agents.llm_llm_governance_insights_agent import GovernanceInsightsAgent
 from agents.notification_agent import NotificationAgent
 from db import db_util
 
@@ -49,6 +51,7 @@ class PipelineExecutor:
             'llm_resolution': LLMResolutionAgent("LLMResolutionAgent"),
             'opslog': OpsLogAgent("OpsLogAgent"),
             'governance': LLMGovernanceAgent("LLMGovernanceAgent"),
+            'insights': GovernanceInsightsAgent("GovernanceInsightsAgent"),
             'notification': NotificationAgent("NotificationAgent")
         }
         self.execution_log = []
@@ -59,6 +62,7 @@ class PipelineExecutor:
             'audit_summary': False,
             'governance_analysis': False,
             'compliance_issues': False,
+            'insights_history': False,
             'notification_events': False
         }
     
@@ -257,6 +261,32 @@ class PipelineExecutor:
         
         return data
     
+    def _validate_insights_output(self, data: Any) -> Dict:
+        """
+        Validate GovernanceInsightsAgent output structure.
+        
+        Args:
+            data: Output from GovernanceInsightsAgent
+            
+        Returns:
+            Dict: Validated output with governance_output and insights
+            
+        Raises:
+            ValueError: If data structure is invalid
+        """
+        if not isinstance(data, dict):
+            raise ValueError(f"GovernanceInsightsAgent must return a dict, got {type(data).__name__}")
+        
+        required_fields = ['governance_output', 'insights']
+        missing_fields = [field for field in required_fields if field not in data]
+        if missing_fields:
+            raise ValueError(f"GovernanceInsightsAgent output missing required fields: {missing_fields}")
+        
+        if not isinstance(data['insights'], dict):
+            raise ValueError(f"GovernanceInsightsAgent 'insights' must be a dict, got {type(data['insights']).__name__}")
+        
+        return data
+    
     def _validate_notification_output(self, data: Any) -> Dict:
         """
         Validate NotificationAgent output structure.
@@ -410,9 +440,32 @@ class PipelineExecutor:
                 self.db_write_status['compliance_issues'] = False
                 logger.warning("Skipping governance writes - no valid run_id")
             
-            # Stage 7: Notification (depends on Governance output)
+            # Stage 7: GovernanceInsights (depends on Governance output)
+            self._log_stage('GovernanceInsightsAgent', 'started')
+            insights_output = self.agents['insights'].run(governance_output)
+            insights_output = self._validate_insights_output(insights_output)
+            self._log_stage('GovernanceInsightsAgent', 'completed', 1)
+            
+            # Write insights_history after GovernanceInsights step
+            if self.run_id:
+                try:
+                    insights_data = insights_output.get('insights', {})
+                    success = db_util.insert_insights_history(self.run_id, insights_data)
+                    self.db_write_status['insights_history'] = success
+                    if not success:
+                        logger.error(f"Failed to write insights_history for run_id {self.run_id}")
+                except Exception as e:
+                    self.db_write_status['insights_history'] = False
+                    logger.error(f"Exception while writing insights_history for run_id {self.run_id}: {e}")
+            else:
+                self.db_write_status['insights_history'] = False
+                logger.warning("Skipping insights_history write - no valid run_id")
+            
+            # Stage 8: Notification (depends on GovernanceInsights output)
+            # Note: NotificationAgent still receives governance_output (not insights)
+            # as it needs governance analysis for escalation decisions
             self._log_stage('NotificationAgent', 'started')
-            notification_output = self.agents['notification'].run(governance_output)
+            notification_output = self.agents['notification'].run(insights_output['governance_output'])
             notification_output = self._validate_notification_output(notification_output)
             self._log_stage('NotificationAgent', 'completed', len(notification_output['notifications_sent']))
             
@@ -461,6 +514,10 @@ class PipelineExecutor:
             print(f"  Escalation: {governance_output['governance_analysis']['escalation']}")
             if governance_output['governance_analysis']['compliance_issues']:
                 print(f"  Compliance Issues: {governance_output['governance_analysis']['compliance_issues']}")
+            print(f"Governance Insights:")
+            print(f"  Trend Summary: {insights_output['insights'].get('trend_summary', 'N/A')[:100]}...")
+            if insights_output['insights'].get('recommendations'):
+                print(f"  Recommendations: {len(insights_output['insights']['recommendations'])}")
             print(f"Notification Status: {notification_output['notification_status']}")
             if notification_output['notifications_sent']:
                 print(f"  Notifications Sent: {len(notification_output['notifications_sent'])}")
@@ -474,9 +531,10 @@ class PipelineExecutor:
                 logger.info("All DB writes completed successfully")
                 print(f"\n✅ All database writes completed successfully")
             
-            # Add DB write status to output
+            # Add DB write status and insights to output
             notification_output['db_write_status'] = self.db_write_status
             notification_output['run_id'] = self.run_id
+            notification_output['insights'] = insights_output['insights']
             
             return notification_output
             
