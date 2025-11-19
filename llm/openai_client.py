@@ -6,6 +6,9 @@ from logging.handlers import RotatingFileHandler
 from utils.json_parser import extract_json_block
 from config.settings_loader import get_settings
 
+logger = logging.getLogger("IncidentOps.llm")
+logger.setLevel(logging.INFO)
+logger.propagate = True  # Use the same handlers as BaseAgent
 
 class OpenAIClient:
     """OpenAI client with structured logging for all LLM interactions.
@@ -16,7 +19,7 @@ class OpenAIClient:
     Implements singleton pattern to avoid repeated initialization.
     """
     
-    _logger = None
+    _logger = logger
     _instance = None
     _initialized = False
     
@@ -51,68 +54,78 @@ class OpenAIClient:
         use_real = settings.llm.use_real_openai
         self.enabled = bool(self.api_key and use_real)
         
-        self._setup_logging()
+        # self._setup_logging()
         self._log_initialization()
         
         # Mark as initialized
         OpenAIClient._initialized = True
 
-    @classmethod
-    def _setup_logging(cls):
-        """Set up logging configuration with rotating file handler.
+    # @classmethod
+    # def _setup_logging(cls):
+    #     """Set up logging configuration with rotating file handler.
         
-        Uses the same logging configuration as BaseAgent to ensure
-        all LLM-related logs are written to logs/pipeline.log.
-        """
-        if cls._logger is not None:
-            return
+    #     Uses the same logging configuration as BaseAgent to ensure
+    #     all LLM-related logs are written to logs/pipeline.log.
+    #     """
+    #     if cls._logger is not None:
+    #         return
         
-        # Create logs directory if it doesn't exist
-        import os
-        log_dir = "logs"
-        if not os.path.exists(log_dir):
-            os.makedirs(log_dir)
+    #     # Create logs directory if it doesn't exist
+    #     import os
+    #     log_dir = "logs"
+    #     if not os.path.exists(log_dir):
+    #         os.makedirs(log_dir)
         
-        # Create logger
-        cls._logger = logging.getLogger("IncidentOps.LLM")
-        cls._logger.setLevel(logging.INFO)
+    #     # Create logger
+    #     cls._logger = logging.getLogger("IncidentOps.LLM")
+    #     cls._logger.setLevel(logging.INFO)
         
-        # Disable propagation to parent logger to avoid duplicate messages
-        cls._logger.propagate = False
+    #     # Disable propagation to parent logger to avoid duplicate messages
+    #     cls._logger.propagate = False
         
-        # Avoid duplicate handlers
-        if cls._logger.handlers:
-            return
+    #     # Avoid duplicate handlers
+    #     if cls._logger.handlers:
+    #         return
         
-        # Console handler
-        console_handler = logging.StreamHandler()
-        console_handler.setLevel(logging.INFO)
-        console_formatter = logging.Formatter('%(message)s')
-        console_handler.setFormatter(console_formatter)
+    #     # Console handler
+    #     console_handler = logging.StreamHandler()
+    #     console_handler.setLevel(logging.INFO)
+    #     console_formatter = logging.Formatter('%(message)s')
+    #     console_handler.setFormatter(console_formatter)
         
-        # Rotating file handler (max 5 MB, 3 backups)
-        log_file = os.path.join(log_dir, "pipeline.log")
-        file_handler = RotatingFileHandler(
-            log_file,
-            maxBytes=5 * 1024 * 1024,  # 5 MB
-            backupCount=3
-        )
-        file_handler.setLevel(logging.INFO)
-        file_formatter = logging.Formatter(
-            '%(asctime)s - %(message)s',
-            datefmt='%Y-%m-%d %H:%M:%S'
-        )
-        file_handler.setFormatter(file_formatter)
+    #     # Rotating file handler (max 5 MB, 3 backups)
+    #     log_file = os.path.join(log_dir, "pipeline.log")
+    #     file_handler = RotatingFileHandler(
+    #         log_file,
+    #         maxBytes=5 * 1024 * 1024,  # 5 MB
+    #         backupCount=3
+    #     )
+    #     file_handler.setLevel(logging.INFO)
+    #     file_formatter = logging.Formatter(
+    #         '%(asctime)s - %(message)s',
+    #         datefmt='%Y-%m-%d %H:%M:%S'
+    #     )
+    #     file_handler.setFormatter(file_formatter)
         
-        # Add handlers to logger
-        cls._logger.addHandler(console_handler)
-        cls._logger.addHandler(file_handler)
+    #     # Add handlers to logger
+    #     cls._logger.addHandler(console_handler)
+    #     cls._logger.addHandler(file_handler)
 
     def _log_initialization(self):
         """Log OpenAI client initialization details."""
         status = "enabled" if self.enabled else "disabled (mock mode)"
         key_status = "present" if self.api_key else "missing"
         self._logger.info(f"[OpenAIClient] Initialized with model={self.model}, status={status}, api_key={key_status}")
+
+    def _log(self, msg: str):
+        self._logger.info(f"[OpenAIClient] {msg}")
+
+    def _warn(self, msg: str):
+        self._logger.warning(f"[OpenAIClient] {msg}")
+
+    def _error(self, msg: str):
+        self._logger.error(f"[OpenAIClient] {msg}")
+
 
     def _log_request(self, prompt: str):
         """Log request metadata.

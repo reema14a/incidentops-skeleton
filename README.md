@@ -94,12 +94,17 @@ These directories are created automatically on first run.
 
 **Option A: CLI Mode**
 ```bash
-python3 -m ui.console_client
+python -m ui.console_client
 ```
 
 **Option B: Streamlit UI**
 ```bash
 streamlit run ui/Home.py
+```
+
+**Option C: Local MCP Server**
+```bash
+python -m llm.local_mcp.server
 ```
 
 **Sample CLI output:**
