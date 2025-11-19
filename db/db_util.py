@@ -10,11 +10,16 @@ import logging
 from contextlib import contextmanager
 from typing import Optional
 from pathlib import Path
+import json
+import os
+from collections import defaultdict
+from datetime import datetime
 
 from config.settings_loader import get_settings
 
-
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("IncidentOps.db")
+logger.setLevel(logging.INFO)
+logger.propagate = True
 
 
 # Schema version for migration tracking
@@ -28,49 +33,79 @@ class DatabaseError(Exception):
 
 def _get_db_path() -> str:
     """
-    Get the database path from settings.
-    
-    Returns:
-        str: Path to the SQLite database file.
+    Resolve database path in a robust, backward-compatible order:
+    1. Environment variables: DB_PATH (preferred) then DATABASE_PATH
+    2. settings.database.path (supports settings as object or dict-like)
+    3. Fallback to a local file './incidents.db' (logged as a WARNING)
+
+    This avoids raising during import if tests haven't configured settings yet.
     """
-    settings = get_settings()
-    
-    # Use dot notation to access database.path
-    if 'database' not in settings or 'path' not in settings.database:
-        raise DatabaseError("Database path not configured in settings")
-    
-    db_path = settings.database.path
-    
-    if not db_path:
-        raise DatabaseError("Database path not configured in settings")
-    
-    return db_path
+    # 1) Env vars (tests commonly set these)
+    for env_key in ("DB_PATH", "DATABASE_PATH"):
+        db_path = os.environ.get(env_key)
+        if db_path:
+            return db_path
+
+    # 2) Try settings (get_settings() may return an object or dict-like)
+    try:
+        settings = get_settings()
+    except Exception:
+        settings = None
+
+    if settings:
+        # settings could be a dict-like or an object with attribute access
+        # try several safe access patterns
+        # a) attribute-style: settings.database.path
+        try:
+            database_attr = getattr(settings, "database", None)
+            if database_attr is not None:
+                # If database_attr itself is dict-like or object
+                db_path = getattr(database_attr, "path", None) or (
+                    database_attr.get("path") if isinstance(database_attr, dict) else None
+                )
+                if db_path:
+                    return db_path
+        except Exception:
+            # ignore and try other patterns
+            pass
+
+        # b) dict-like top-level
+        try:
+            if isinstance(settings, dict):
+                db_section = settings.get("database") or settings.get("db")
+                if isinstance(db_section, dict):
+                    db_path = db_section.get("path")
+                    if db_path:
+                        return db_path
+        except Exception:
+            pass
+
+    # 3) Fallback: local file
+    fallback = os.path.abspath(os.path.join(os.getcwd(), "incidents.db"))
+    logger.warning(
+        "Database path not found in env or settings; falling back to %s. "
+        "Set DB_PATH or configure settings.database.path for tests/production.",
+        fallback,
+    )
+    return fallback
 
 
 @contextmanager
 def get_connection():
-    """
-    Context manager for database connections.
-    
-    Provides a connection with automatic commit/rollback and cleanup.
-    
-    Yields:
-        sqlite3.Connection: Database connection.
-        
-    Example:
-        with get_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute("SELECT * FROM pipeline_runs")
-    """
     db_path = _get_db_path()
     conn = None
-    
     try:
-        conn = sqlite3.connect(db_path)
-        conn.row_factory = sqlite3.Row  # Enable column access by name
-        conn.execute("PRAGMA foreign_keys = ON")  # Enable foreign key constraints
+        conn = sqlite3.connect(
+            db_path,
+            timeout=20,
+            isolation_level=None,   # autocommit
+            check_same_thread=False
+        )
+        conn.row_factory = sqlite3.Row
+        conn.execute("PRAGMA journal_mode=WAL;")
+        conn.execute("PRAGMA busy_timeout=5000;")
+        conn.execute("PRAGMA foreign_keys = ON;")
         yield conn
-        conn.commit()
     except Exception as e:
         if conn:
             conn.rollback()
@@ -79,6 +114,7 @@ def get_connection():
     finally:
         if conn:
             conn.close()
+
 
 
 def _create_migrations_table(conn: sqlite3.Connection) -> None:
@@ -546,7 +582,7 @@ def insert_governance_analysis(run_id: int, gov_dict: dict) -> bool:
         run_id: The pipeline run ID to associate this governance analysis with.
         gov_dict: Dictionary containing governance analysis data with keys:
                  - risk (str): Risk level or assessment
-                 - escalation (str): Escalation decision or status
+                 - escalation (str): Escalation category
                  - commentary (str): Additional governance commentary
                  The full dictionary is also stored as JSON in the governance_data column.
                    
@@ -578,12 +614,12 @@ def insert_governance_analysis(run_id: int, gov_dict: dict) -> bool:
             """, (
                 run_id,
                 gov_dict.get('risk'),
-                gov_dict.get('escalation'),
+                gov_dict.get('escalation_category'),
                 gov_dict.get('commentary'),
                 governance_data_json
             ))
             
-            logger.info(f"Inserted governance analysis for run_id {run_id}: risk={gov_dict.get('risk')}, escalation={gov_dict.get('escalation')}")
+            logger.info(f"Inserted governance analysis for run_id {run_id}: risk={gov_dict.get('risk')}, escalation={gov_dict.get('escalation_category')}")
             return True
             
     except Exception as e:
@@ -754,9 +790,10 @@ def get_governance_history(limit: Optional[int] = None) -> list[dict]:
                    - id (int): Governance analysis record ID
                    - run_id (int): Associated pipeline run ID
                    - timestamp (str): ISO format timestamp from pipeline run
-                   - risk (str): Risk level or assessment (legacy column)
-                   - escalation (str): Escalation decision or status (legacy column)
-                   - commentary (str): Additional governance commentary (legacy column)
+                   - risk (str): Risk level or assessment
+                   - escalation (str): Escalation decision or status
+                   - escalation_category (str): Escalation category
+                   - commentary (str): Additional governance commentary
                    - governance_data (str): Full governance analysis as JSON string
                    Returns empty list if query fails or no records exist.
         
@@ -778,7 +815,8 @@ def get_governance_history(limit: Optional[int] = None) -> list[dict]:
                     g.run_id,
                     p.timestamp,
                     g.risk,
-                    g.escalation,
+                    g.escalation AS escalation_category,
+                    json_extract(g.governance_data, '$.escalation') AS escalation_detail,
                     g.commentary,
                     g.governance_data
                 FROM governance_analysis g
@@ -800,7 +838,8 @@ def get_governance_history(limit: Optional[int] = None) -> list[dict]:
                     'run_id': row['run_id'],
                     'timestamp': row['timestamp'],
                     'risk': row['risk'],
-                    'escalation': row['escalation'],
+                    'escalation': row['escalation_detail'],
+                    'escalation_category': row['escalation_category'],
                     'commentary': row['commentary'],
                     'governance_data': row['governance_data']
                 })
@@ -1030,8 +1069,6 @@ def get_severity_distribution() -> dict[str, int]:
         for severity, count in severity_dist.items():
             print(f"{severity}: {count}")
     """
-    import json
-    from collections import defaultdict
     
     try:
         with get_connection() as conn:
@@ -1093,8 +1130,6 @@ def get_category_distribution() -> dict[str, int]:
         for category, count in category_dist.items():
             print(f"{category}: {count}")
     """
-    import json
-    from collections import defaultdict
     
     try:
         with get_connection() as conn:
@@ -1159,7 +1194,6 @@ def get_timeline_data() -> list[dict]:
         for record in timeline:
             print(f"{record['date']} {record['time']}: {record['incidents']} incidents")
     """
-    from datetime import datetime
     
     try:
         with get_connection() as conn:
@@ -1226,7 +1260,6 @@ def get_risk_trend() -> list[dict]:
         for record in risk_trend:
             print(f"{record['date']} {record['time']}: Risk level {record['risk']}")
     """
-    from datetime import datetime
     
     try:
         with get_connection() as conn:
@@ -1300,7 +1333,6 @@ def get_compliance_trend() -> list[dict]:
         for record in compliance_trend:
             print(f"{record['date']} {record['time']}: {record['issue_count']} compliance issues")
     """
-    from datetime import datetime
     
     try:
         with get_connection() as conn:

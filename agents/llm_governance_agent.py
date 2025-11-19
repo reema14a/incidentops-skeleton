@@ -7,7 +7,7 @@ from typing import Dict, Any
 from agents.base_agent import BaseAgent
 from llm.openai_client import OpenAIClient
 from utils.json_parser import extract_json_block
-
+from utils.prompt_loader import load_prompt
 
 class LLMGovernanceAgent(BaseAgent):
     """
@@ -25,28 +25,36 @@ class LLMGovernanceAgent(BaseAgent):
         """
         super().__init__(name)
         self.llm_client = OpenAIClient(model=model)
-        self.prompt_template = self._load_prompt_template()
-    
-    def _load_prompt_template(self) -> str:
-        """
-        Load the governance prompt template from prompts.yaml.
-        
-        Returns:
-            str: Prompt template string
-        """
-        from utils.prompt_loader import load_prompt
-        
-        # Fallback prompt
-        default_prompt = """You are an AI governance and compliance auditor. Analyze the following final log summary (JSON):
-{log}
 
-Provide a JSON object with:
-- risk: one of [low, medium, high, critical]
-- escalation: recommended escalation action
-- compliance_issues: list (if any)
-- commentary: short audit commentary"""
+        # Format prompt with audit log
+        base_prompt = load_prompt('governance_prompt')
+        category_prompt = load_prompt("escalation_categorization_guidelines")
+
+        self.prompt_template = f"{base_prompt}\n\n{category_prompt}"
+    
+#     def _load_prompt_template(self) -> str:
+#         """
+#         Load the governance prompt template from prompts.yaml.
         
-        return load_prompt('governance_prompt', default_prompt)
+#         Returns:
+#             str: Prompt template string
+#         """
+        
+        
+#         # Fallback prompt
+#         default_prompt = """You are an AI governance and compliance auditor. Analyze the following final log summary (JSON):
+# {log}
+
+# Provide a JSON object with:
+# - risk: one of [low, medium, high, critical]
+# - escalation: recommended escalation action
+# - compliance_issues: list (if any)
+# - commentary: short audit commentary"""
+        
+#         base_prompt = load_prompt('governance_prompt', default_prompt)
+#         category_prompt = load_prompt("escalation_categorization_guidelines")
+
+#         return f"{base_prompt}\n\n{category_prompt}"
     
     def run(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -94,11 +102,10 @@ Provide a JSON object with:
         # Prepare simplified log for LLM
         simplified_log = self._simplify_audit_log(audit_log)
         
-        # Format prompt with audit log
         prompt = self.prompt_template.format(
             log=json.dumps(simplified_log, indent=2)
         )
-        
+
         # Call LLM
         try:
             response = self.llm_client.generate(prompt)
@@ -243,6 +250,7 @@ Provide a JSON object with:
             return {
                 'risk': risk,
                 'escalation': parsed.get('escalation', 'No escalation required'),
+                'escalation_category': parsed.get('escalation_category', 'Unknown'),
                 'compliance_issues': parsed.get('compliance_issues', []),
                 'commentary': parsed.get('commentary', 'Analysis completed')
             }
@@ -252,6 +260,7 @@ Provide a JSON object with:
         return {
             'risk': 'medium',
             'escalation': 'Unable to determine - manual review recommended',
+            'escalation_category': 'Unknown',
             'compliance_issues': [],
             'commentary': response[:200] if response else 'No analysis available'
         }
@@ -272,22 +281,28 @@ Provide a JSON object with:
         if incident_count == 0:
             risk = 'low'
             escalation = 'None required'
+            escalation_category = 'none'
         elif incident_count <= 2:
             risk = 'low'
             escalation = 'Monitor for recurring patterns'
+            escalation_category = 'monitor'
         elif incident_count <= 5:
             risk = 'medium'
             escalation = 'Review with team lead if issues persist'
+            escalation_category = 'team_review'
         elif incident_count <= 10:
             risk = 'high'
             escalation = 'Escalate to on-call engineer'
+            escalation_category = 'incident_team'
         else:
             risk = 'critical'
             escalation = 'Immediate escalation to incident commander required'
+            escalation_category = 'critical_urgent'
         
         return {
             'risk': risk,
             'escalation': escalation,
+            'escalation_category': escalation_category,
             'compliance_issues': ['LLM analysis unavailable - manual compliance review recommended'],
             'commentary': f"Detected {incident_count} incident(s). Risk assessment based on incident count. Manual review recommended for detailed compliance analysis."
         }

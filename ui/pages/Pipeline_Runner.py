@@ -168,7 +168,9 @@ if 'pipeline_result' in st.session_state:
             else:
                 st.success(f"🟢 Risk Level: {risk}")
 
-            st.write(f"**Escalation:** {gov.get('escalation', 'N/A')}")
+            st.write(f"**Escalation Category:** {gov.get('escalation_category', 'N/A')}")
+
+            st.write(f"**Escalation Details:** {gov.get('escalation', 'N/A')}")
 
             if gov.get('compliance_issues'):
                 st.write(f"**Compliance Issues:** {', '.join(gov['compliance_issues'])}")

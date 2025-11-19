@@ -35,6 +35,23 @@ governance_prompt: |
   - compliance_issues: list (if any)
   - commentary: short audit commentary
 
+escalation_categorization_guidelines: |
+  When generating the governance analysis, classify the escalation into a structured escalation_category using these rules:
+
+  Categories:
+    - None: No escalation required, safe, normal operations
+    - Monitor: Monitor, keep an eye on issues, follow-up if recurrence
+    - Team Review: Team-level review recommended; engineering lead involvement
+    - Incident Team: Incident response / on-call team must take action
+    - Management: Senior management involvement required; executive review
+    - Critical Urgent: Immediate critical response needed; severe operational risks
+
+  Based on the escalation text you generate, include an additional field:
+      "escalation_category": "<one_of_the_categories_above>"
+
+  Escalation text may vary, but escalation_category MUST be selected from the controlled vocabulary above.
+
+
 governance_insights_prompt: |
   You are an AI assistant responsible for analyzing historical incident governance data.
   You will be given structured JSON representing multiple past pipeline runs,
