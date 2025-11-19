@@ -54,7 +54,8 @@ def test_get_escalation_text_counts_single_escalation(temp_db):
             run_id=run_id,
             gov_dict={
                 'risk': 'medium',
-                'escalation': 'Monitor for recurring patterns',
+                'escalation': 'Monitor',
+                'escalation_category': 'Monitor',
                 'commentary': 'Test commentary'
             }
         )
@@ -64,7 +65,7 @@ def test_get_escalation_text_counts_single_escalation(temp_db):
         
         assert isinstance(result, dict)
         assert len(result) == 1
-        assert result['Monitor for recurring patterns'] == 1
+        assert result['Monitor'] == 1
 
 
 def test_get_escalation_text_counts_multiple_same_escalation(temp_db):
@@ -84,6 +85,7 @@ def test_get_escalation_text_counts_multiple_same_escalation(temp_db):
                 gov_dict={
                     'risk': 'low',
                     'escalation': escalation_text,
+                    'escalation_category': escalation_text,
                     'commentary': f'Test commentary {i}'
                 }
             )
@@ -100,12 +102,12 @@ def test_get_escalation_text_counts_multiple_different_escalations(temp_db):
     """Test get_escalation_text_counts with multiple different escalation types."""
     with patch('db.db_util._get_db_path', return_value=temp_db):
         escalations = [
-            'None required',
-            'Monitor for recurring patterns',
-            'Review with team lead if issues persist',
-            'Escalate to on-call engineer',
-            'None required',  # Duplicate
-            'Monitor for recurring patterns',  # Duplicate
+            'None',
+            'Monitor',
+            'Team Review',
+            'Incident Team',
+            'None',  # Duplicate
+            'Monitor',  # Duplicate
         ]
         
         # Insert pipeline runs with different escalations
@@ -120,6 +122,7 @@ def test_get_escalation_text_counts_multiple_different_escalations(temp_db):
                 gov_dict={
                     'risk': 'medium',
                     'escalation': escalation_text,
+                    'escalation_category': escalation_text,
                     'commentary': f'Test commentary {i}'
                 }
             )
@@ -129,10 +132,10 @@ def test_get_escalation_text_counts_multiple_different_escalations(temp_db):
         
         assert isinstance(result, dict)
         assert len(result) == 4
-        assert result['None required'] == 2
-        assert result['Monitor for recurring patterns'] == 2
-        assert result['Review with team lead if issues persist'] == 1
-        assert result['Escalate to on-call engineer'] == 1
+        assert result['None'] == 2
+        assert result['Monitor'] == 2
+        assert result['Team Review'] == 1
+        assert result['Incident Team'] == 1
 
 
 def test_get_escalation_text_counts_ignores_null_and_empty(temp_db):
@@ -169,6 +172,7 @@ def test_get_escalation_text_counts_ignores_null_and_empty(temp_db):
             gov_dict={
                 'risk': 'medium',
                 'escalation': '',
+                'escalation_category': '',
                 'commentary': 'Test commentary'
             }
         )
@@ -179,6 +183,7 @@ def test_get_escalation_text_counts_ignores_null_and_empty(temp_db):
             gov_dict={
                 'risk': 'high',
                 'escalation': 'Escalate to on-call engineer',
+                'escalation_category': 'Escalate to on-call engineer',
                 'commentary': 'Test commentary'
             }
         )
@@ -206,6 +211,7 @@ def test_get_escalation_text_counts_with_special_characters(temp_db):
             gov_dict={
                 'risk': 'critical',
                 'escalation': escalation_text,
+                'escalation_category': escalation_text,
                 'commentary': 'Test commentary'
             }
         )

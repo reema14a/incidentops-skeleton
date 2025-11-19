@@ -12,7 +12,6 @@ logger = logging.getLogger("LocalMCPServer")
 
 PUSHOVER_API_URL = "https://api.pushover.net/1/messages.json"
 
-
 def pushover_send(arguments: Dict[str, Any], request_id: Optional[Any] = None) -> Dict[str, Any]:
     """Send a push notification via Pushover API.
     
@@ -31,6 +30,7 @@ def pushover_send(arguments: Dict[str, Any], request_id: Optional[Any] = None) -
         ValueError: If required arguments are missing.
         Exception: If notification sending fails.
     """
+    
     # Validate required arguments
     required_fields = ['user', 'message']
     for field in required_fields:
@@ -45,7 +45,7 @@ def pushover_send(arguments: Dict[str, Any], request_id: Optional[Any] = None) -
     message = arguments['message']
     title = arguments.get('title', 'IncidentOps Notification')
     priority = arguments.get('priority', 0)
-    
+
     # Redact user key for logging (show only first 8 chars)
     safe_user_key = user_key[:8] + '...' if len(user_key) > 8 else '[REDACTED]'
     logger.info(
@@ -56,17 +56,14 @@ def pushover_send(arguments: Dict[str, Any], request_id: Optional[Any] = None) -
     # Get Pushover API token from environment
     settings = get_settings()
     pushover_token = settings.get_secret('PUSHOVER_API_TOKEN')
-    
+
     if not pushover_token:
         logger.error(
             f"[request_id={request_id}] [tool=pushover.send] "
             f"Pushover API token not configured"
         )
-        raise ValueError(
-            "Pushover API token not configured. "
-            "Set PUSHOVER_API_TOKEN environment variable."
-        )
-    
+        raise ValueError("Missing required argument: token") 
+
     try:
         # Prepare API request
         payload = {
@@ -122,7 +119,7 @@ def pushover_send(arguments: Dict[str, Any], request_id: Optional[Any] = None) -
                 f"Pushover API returned status {response.status_code}: {response.text}",
                 exc_info=True
             )
-            raise Exception(
+            raise ValueError(
                 f"Pushover API request failed with status {response.status_code}: {response.text}"
             )
     

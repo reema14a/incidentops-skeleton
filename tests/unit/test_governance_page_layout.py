@@ -29,8 +29,8 @@ def test_governance_page_imports():
         assert hasattr(governance_module, 'get_latest_governance_data')
         assert hasattr(governance_module, 'get_risk_emoji')
         assert hasattr(governance_module, 'format_timestamp')
-        assert hasattr(governance_module, 'short_escalation')
-        
+        assert hasattr(governance_module, "render_page")
+
         print("✓ Governance page imports successfully")
         print("✓ All required functions are present")
         
@@ -57,12 +57,6 @@ def test_helper_functions():
     # Test format_timestamp
     assert governance_module.format_timestamp('N/A') == 'N/A'
     assert governance_module.format_timestamp('') == 'N/A'
-    
-    # Test short_escalation
-    assert governance_module.short_escalation('Escalate immediately to on-call team') == 'Escalate immediately'
-    assert governance_module.short_escalation('Monitor') == 'Monitor'
-    assert governance_module.short_escalation('') == 'N/A'
-    assert governance_module.short_escalation(None) == 'N/A'
     
     print("✓ All helper functions work correctly")
 

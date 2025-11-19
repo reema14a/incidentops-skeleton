@@ -64,7 +64,7 @@ class TestPushoverSend:
         with pytest.raises(ValueError) as exc_info:
             pushover_send(arguments)
         
-        assert "Pushover API token not configured" in str(exc_info.value)
+        assert "Missing required argument: token" in str(exc_info.value)
     
     def test_pushover_send_missing_required_field(self) -> None:
         """Test error when required field is missing."""

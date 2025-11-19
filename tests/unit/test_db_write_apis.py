@@ -468,6 +468,7 @@ class TestInsertGovernanceAnalysis:
         gov_dict = {
             "risk": "high",
             "escalation": "immediate",
+            "escalation_category": "immediate",
             "commentary": "Critical security vulnerability detected"
         }
         
@@ -490,7 +491,8 @@ class TestInsertGovernanceAnalysis:
         """Test governance analysis insertion with partial data."""
         gov_dict = {
             "risk": "low",
-            "escalation": "none"
+            "escalation": "none",
+            "escalation_category": "none"
             # commentary is missing
         }
         
