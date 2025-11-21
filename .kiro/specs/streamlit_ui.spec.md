@@ -94,7 +94,8 @@ ui/
 ### **Phase 4 — Governance**
 
 * Governance summary + compliance
-* Governance Page Architecture
+* Governance Page layout
+
 ```
 Governance Page
  ├── Overview Tab  
@@ -102,29 +103,19 @@ Governance Page
  │     - Timestamp, run ID
  │     - Compact JSON expander
  │
- ├── Historical Tab  (DB analytics)
- │     - Governance history table
- │     - Risk trend charts
- │     - Escalation frequency charts
- │     - Compliance trend charts
- │     - Category distribution charts
- │     - Severity distribution charts
- │     - Per-run JSON expanders
- │
- └── AI Insights Tab (LLM)
-       - trend_summary
-       - recurring issues
-       - category hotspots
-       -  compliance_trend
-       - risk_trend
-       - recommendations
-       - anomaly_detection
-       - raw JSON
+ └── Historical Tab  (DB analytics)
+       - Governance history table
+       - Risk trend charts
+       - Escalation frequency charts
+       - Compliance trend charts
+       - Category distribution charts
+       - Severity distribution charts
+       - Per-run JSON expanders
 ```
+### **Phase 5 — Deep Governance Insights Page (NEW)**
 
-### **Phase 5 - Governance Page – AI Insights Tab (NEW)**
+* A new standalone page displaying output from `GovernanceInsightsAgent`:
 
-* Displays results from GovernanceInsightsAgent as mentioned in above architecture 
   * Trend Summary
   * Recurring Issues
   * Category Hotspots
@@ -132,7 +123,24 @@ Governance Page
   * Risk Trend
   * Recommendations
   * Anomaly Detection
-  * Raw JSON
+  * Raw JSON (expander)
+
+
+```
+Deep Governance Insights
+ ├── Header (page title + timestamp + run_id)
+ ├── Trend Summary
+ ├── Patterns Section
+ │     - Recurring Issues
+ │     - Category Hotspots
+ ├── Risk & Compliance
+ │     - Risk Trend
+ │     - Compliance Trend
+ ├── Recommendations
+ ├── Anomaly Detection
+ └── Raw JSON expander
+```
+
   
 ### **Phase 6 — Notifications**
 
@@ -235,14 +243,10 @@ Governance Page
 * [x] Redesign Governance layout (Summary Card, Overview tab, Historical tab, collapsible history)
 
 ---
-## **Phase 5 — Governance Insights**
-- [ ] Add AI Insights tab to Governance page with three sections:
-      - Summary Insights (trend_summary)
-      - Patterns (recurring_issues, hotspots)
-      - Recommendations + anomalies
-- [ ] Display output of GovernanceInsightsAgent
-- [ ] Add JSON expander for insights output
-- [ ] Add DB-backed trend charts (risk, compliance, escalation)
+## **Phase 5 — Deep Governance Insights**
+
+* [x] Create `ui/pages/Deep_Governance_Insights.py`
+* [x] Add DB-backed trend charts (risk, compliance, escalation)
 
 
 ## **Phase 6 — Notifications**
