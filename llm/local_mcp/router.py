@@ -34,6 +34,7 @@ def route_tool_call(
     try:
         from llm.local_mcp.tools.gmail_tool import gmail_send
         from llm.local_mcp.tools.pushover_tool import pushover_send
+        from llm.local_mcp.tools.tarot_tool import tarot_draw
     except ImportError as e:
         logger.error(
             f"[request_id={request_id}] Failed to import tool implementations: {e}"
@@ -45,6 +46,8 @@ def route_tool_call(
         return gmail_send(arguments, request_id)
     elif tool_name == 'pushover.send':
         return pushover_send(arguments, request_id)
+    elif tool_name == 'tarot.draw':
+        return tarot_draw(arguments, request_id)
     else:
         logger.error(f"[request_id={request_id}] Unknown tool: {tool_name}")
-        raise ValueError(f"Unknown tool: {tool_name}. Supported tools: gmail.send, pushover.send")
+        raise ValueError(f"Unknown tool: {tool_name}. Supported tools: gmail.send, pushover.send, tarot.draw")

@@ -58,6 +58,9 @@ governance_insights_prompt: |
   including governance analysis, compliance findings, category distributions,
   severity distributions, and escalation patterns.
 
+  Historical Data:
+  {historical_data}
+
   Your task is to produce a JSON object with the following fields:
     - trend_summary: high-level description of notable patterns across runs
     - risk_trend: observations about changes in risk levels over time

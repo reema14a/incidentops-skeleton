@@ -27,3 +27,7 @@ notification:
 # LLM configuration
 llm:
   use_real_openai: ${USE_REAL_OPENAI}
+
+# Tarot Oracle configuration (optional mystical guidance)
+tarot:
+  enabled: ${TAROT_ENABLED}

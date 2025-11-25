@@ -23,7 +23,7 @@ from agents.triage_agent import TriageAgent
 from agents.llm_resolution_agent import LLMResolutionAgent
 from agents.opslog_agent import OpsLogAgent
 from agents.llm_governance_agent import LLMGovernanceAgent
-from agents.llm_llm_governance_insights_agent import GovernanceInsightsAgent
+from agents.llm_governance_insights_agent import GovernanceInsightsAgent
 from agents.notification_agent import NotificationAgent
 from db import db_util
 

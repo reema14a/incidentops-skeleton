@@ -3,9 +3,10 @@ GovernanceInsightsAgent uses an LLM to analyze historical governance data.
 This agent sits after LLMGovernanceAgent and provides trend analysis and recommendations.
 """
 import json
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 from agents.base_agent import BaseAgent
 from llm.openai_client import OpenAIClient
+from llm.mcp_client import MCPClient, MCPError
 from utils.json_parser import extract_json_block
 from utils.prompt_loader import load_prompt
 from db import db_util
@@ -33,6 +34,14 @@ class GovernanceInsightsAgent(BaseAgent):
         super().__init__(name)
         self.llm_client = OpenAIClient(model=model)
         
+        # Initialize MCP client for tarot integration
+        try:
+            self.mcp_client = MCPClient()
+            self.log("MCP client initialized for tarot integration")
+        except Exception as e:
+            self.log(f"Warning: Failed to initialize MCP client: {e}")
+            self.mcp_client = None
+        
         # Load prompt template
         self.prompt_template = load_prompt('governance_insights_prompt')
     
@@ -56,17 +65,23 @@ class GovernanceInsightsAgent(BaseAgent):
                     - category_hotspots: Frequently occurring categories/severities
                     - recommendations: Actionable recommendations
                     - anomaly_detection: Abnormalities or outliers
+                    - shadow_risk_interpretation: Tarot card data (optional)
         """
         self.log("Analyzing historical governance data...")
+        
+        # Draw tarot card before insights generation
+        tarot_card = self._draw_tarot_card()
         
         # Retrieve aggregated historical data from database
         historical_data = self._retrieve_historical_data()
         
         if not historical_data or not historical_data.get('has_data'):
             self.log("Insufficient historical data for analysis")
+            insights = self._generate_no_data_insights()
+            insights['shadow_risk_interpretation'] = tarot_card
             return {
                 'governance_output': input_data,
-                'insights': self._generate_no_data_insights()
+                'insights': insights
             }
         
         self.log(f"Retrieved historical data: {historical_data['summary']}")
@@ -83,10 +98,16 @@ class GovernanceInsightsAgent(BaseAgent):
             # Parse LLM response
             insights = self._parse_llm_response(response)
             
+            # Include tarot card data in insights
+            insights['shadow_risk_interpretation'] = tarot_card
+            
             self.log(f"Generated insights: {insights.get('trend_summary', 'N/A')[:100]}...")
             
             if insights.get('recommendations'):
                 self.log(f"📊 Generated {len(insights['recommendations'])} recommendation(s)")
+            
+            if tarot_card:
+                self.log(f"🔮 Tarot reading: {tarot_card.get('card_name', 'Unknown')}")
             
             return {
                 'governance_output': input_data,
@@ -96,10 +117,62 @@ class GovernanceInsightsAgent(BaseAgent):
         except Exception as e:
             self.log(f"Error generating insights: {e}")
             # Return fallback insights
+            fallback_insights = self._generate_fallback_insights(historical_data)
+            fallback_insights['shadow_risk_interpretation'] = tarot_card
             return {
                 'governance_output': input_data,
-                'insights': self._generate_fallback_insights(historical_data)
+                'insights': fallback_insights
             }
+    
+    def _draw_tarot_card(self) -> Optional[Dict[str, Any]]:
+        """
+        Draw a tarot card through MCP client.
+        
+        Returns:
+            Dict: Tarot card data with keys:
+                - card_name: Name of the card
+                - meaning: Card interpretation
+                - risk_alignment: Governance concept mapping
+                - omen_message: Contextual message for incident ops
+            None: If MCP client is unavailable, disabled, or call fails
+        """
+        # Check if tarot is enabled in configuration
+        try:
+            from config.settings_loader import get_settings
+            settings = get_settings()
+            tarot_enabled = settings.get('tarot', {}).get('enabled', False)
+            
+            if not tarot_enabled:
+                self.log("Tarot reading disabled in configuration")
+                return None
+        except Exception as e:
+            # If settings can't be loaded, default to disabled
+            self.log(f"Warning: Could not check tarot configuration: {e}")
+            return None
+        
+        if not self.mcp_client:
+            self.log("MCP client not available, skipping tarot reading")
+            return None
+        
+        try:
+            self.log("Drawing tarot card...")
+            response = self.mcp_client.call_tool('tarot.draw', {})
+            
+            if response.get('success') and response.get('result'):
+                tarot_data = response['result']
+                self.log(f"🔮 Drew tarot card: {tarot_data.get('card_name', 'Unknown')}")
+                return tarot_data
+            else:
+                error_msg = response.get('error', {}).get('message', 'Unknown error')
+                self.log(f"Warning: Tarot draw failed: {error_msg}")
+                return None
+                
+        except MCPError as e:
+            self.log(f"Warning: MCP error during tarot draw: {e.message}")
+            return None
+        except Exception as e:
+            self.log(f"Warning: Unexpected error during tarot draw: {e}")
+            return None
     
     def _retrieve_historical_data(self) -> Dict[str, Any]:
         """

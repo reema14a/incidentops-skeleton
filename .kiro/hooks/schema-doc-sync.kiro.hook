@@ -1,0 +1,20 @@
+{
+  "enabled": true,
+  "name": "Schema Documentation Sync",
+  "description": "When the schema of governance insights or tarot oracle output changes in governance_insights_agent.py, tarot_mcp_server.py, or orchestrator.py, automatically update the documentation and tests. Regenerate /docs/pipeline_flow.md, /docs/insights_schema.md, and /docs/tarot_schema.md. Update integration tests to match the new output schema. Ensure all required keys remain consistent across pipeline, UI, and agents.\n\nAlso update Streamlit UI pages if schema fields change.\n- ui/pages/Governance.py\n- ui/pages/Deep_Governance_Insights.py\n- ui/pages/Tarot_Insights.py (if created)",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      "agents/llm_governance_insights_agent.py",
+      "llm/local_mcp/tools/tarot_tool.py",
+      "orchestrator/orchestrator.py"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "A schema-defining file has been modified. Please perform the following tasks:\n\n1. Analyze the changes to identify any modifications to output schemas, data structures, or required keys in:\n   - Governance insights output (from llm_governance_insights_agent.py)\n   - Tarot oracle output (from tarot_tool.py)\n   - Orchestrator data flow (from orchestrator.py)\n\n2. Update or create the following documentation files to reflect the current schemas:\n   - /docs/pipeline_flow.md - Document the complete data flow through the pipeline\n   - /docs/insights_schema.md - Document the governance insights output schema with all required keys\n   - /docs/tarot_schema.md - Document the tarot oracle output schema with all required keys\n\n3. Review and update integration tests to match the new schemas:\n   - tests/integration/test_governance_insights_integration.py\n   - tests/integration/test_orchestrator_json_integration.py\n   - Any other integration tests that validate schema structure\n\n4. Verify consistency across:\n   - Pipeline agents (ensure they produce expected keys)\n   - UI pages (ensure they consume the correct keys)\n   - Database storage (ensure schema matches stored data)\n\n5. If any required keys are missing or inconsistent, fix them in the source files and update all dependent code.\n\nPlease provide a summary of all changes made to maintain schema consistency."
+  },
+  "workspaceFolderName": "kiro-incidentops",
+  "shortName": "schema-doc-sync"
+}

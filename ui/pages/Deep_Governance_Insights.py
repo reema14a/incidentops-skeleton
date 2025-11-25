@@ -272,6 +272,118 @@ def render_page():
     st.markdown("---")
     
     # ============================================================================
+    # TAROT INTERPRETATION
+    # ============================================================================
+    st.subheader("🔮 Tarot Interpretation")
+    
+    shadow_risk = insights.get('shadow_risk_interpretation')
+    
+    if shadow_risk:
+        # Apply mystical styling using custom CSS
+        st.markdown("""
+        <style>
+        .tarot-panel {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            border: 2px solid #9d4edd;
+            border-radius: 12px;
+            padding: 24px;
+            margin: 16px 0;
+            box-shadow: 0 4px 6px rgba(157, 78, 221, 0.3);
+        }
+        .tarot-card-name {
+            font-size: 28px;
+            font-weight: bold;
+            color: #ffd700;
+            text-align: center;
+            margin-bottom: 16px;
+            text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+        }
+        .tarot-meaning {
+            color: #e0e0e0;
+            font-size: 16px;
+            line-height: 1.6;
+            margin-bottom: 12px;
+        }
+        .tarot-omen {
+            color: #9d4edd;
+            font-size: 16px;
+            font-style: italic;
+            line-height: 1.6;
+            margin-top: 12px;
+            padding: 12px;
+            background: rgba(157, 78, 221, 0.1);
+            border-left: 3px solid #9d4edd;
+            border-radius: 4px;
+        }
+        </style>
+        """, unsafe_allow_html=True)
+        
+        # Create tarot panel
+        st.markdown('<div class="tarot-panel">', unsafe_allow_html=True)
+        
+        # Card name
+        card_name = shadow_risk.get('card_name', 'Unknown Card')
+        st.markdown(f'<div class="tarot-card-name">✨ {card_name} ✨</div>', unsafe_allow_html=True)
+        
+        # Meaning
+        meaning = shadow_risk.get('meaning', 'No meaning available')
+        st.markdown(f'<div class="tarot-meaning"><strong>Meaning:</strong> {meaning}</div>', unsafe_allow_html=True)
+        
+        # Risk alignment badge
+        risk_alignment = shadow_risk.get('risk_alignment', 'unknown')
+        
+        # Define risk alignment colors
+        risk_colors = {
+            'stability': '#4caf50',      # Green
+            'disruption': '#f44336',     # Red
+            'transformation': '#9c27b0', # Purple
+            'caution': '#ff9800',        # Orange
+            'opportunity': '#2196f3'     # Blue
+        }
+        
+        badge_color = risk_colors.get(risk_alignment.lower(), '#808080')
+        
+        st.markdown(f"""
+        <div style="text-align: center; margin: 16px 0;">
+            <span style="
+                background-color: {badge_color};
+                color: white;
+                padding: 8px 16px;
+                border-radius: 20px;
+                font-weight: bold;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 1px;
+            ">
+                {risk_alignment}
+            </span>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # Omen message
+        omen_message = shadow_risk.get('omen_message', 'No omen message available')
+        st.markdown(f'<div class="tarot-omen">🌙 <strong>Omen:</strong> {omen_message}</div>', unsafe_allow_html=True)
+        
+        st.markdown('</div>', unsafe_allow_html=True)
+    else:
+        # Graceful fallback when no tarot data available
+        st.markdown("""
+        <div style="
+            text-align: center;
+            padding: 32px;
+            color: #9d4edd;
+            font-style: italic;
+            background: rgba(157, 78, 221, 0.05);
+            border: 1px dashed #9d4edd;
+            border-radius: 8px;
+        ">
+            🌙 No tarot reading available for this insight 🔮
+        </div>
+        """, unsafe_allow_html=True)
+    
+    st.markdown("---")
+    
+    # ============================================================================
     # DB-BACKED TREND CHARTS (OPTIONAL)
     # ============================================================================
     st.subheader("📊 Historical Trend Charts")

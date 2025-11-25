@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "name": "Tarot MCP Optional Integration Guard",
+  "description": "When orchestrator.py is saved, verify that the Tarot Oracle MCP integration is fully optional and gracefully handles errors. Check that the orchestrator doesn't break if the Tarot MCP server is disabled, unreachable, or returns errors. Ensure Tarot insights are added only when available and skipped otherwise. If the integration introduces errors or violates expected control flow, automatically fix the code to maintain stability.",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      "orchestrator/orchestrator.py"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "Review the orchestrator.py file and verify that any Tarot Oracle MCP integration is fully optional and fault-tolerant. Check for:\n\n1. **Error Handling**: All Tarot MCP calls must be wrapped in try-except blocks that catch and log errors without breaking the pipeline\n2. **Graceful Degradation**: If Tarot MCP is unavailable, disabled, or returns errors, the orchestrator should continue normally without Tarot insights\n3. **Optional Behavior**: Tarot insights should only be added if successfully retrieved; otherwise they should be skipped entirely\n4. **No Breaking Changes**: The integration must not alter the core control flow or break existing functionality\n5. **Proper Logging**: Errors should be logged at appropriate levels (warning/info, not error) since this is optional functionality\n6. ** Configurable Option**: Ensure Tarot execution is wrapped in a conditional settings flag (settings.mcp.tarot.enabled or equivalent). If not present, add a configuration toggle\n\nIf any violations are found, automatically fix the code by:\n- Adding proper try-except blocks around Tarot MCP calls\n- Ensuring the pipeline continues on Tarot failures\n- Making Tarot insights conditional on successful retrieval\n- Adding appropriate logging for when Tarot is unavailable\n- Preserving all existing orchestrator functionality\n\nAfter fixing, verify the changes maintain the orchestrator's stability and don't introduce new issues."
+  },
+  "workspaceFolderName": "kiro-incidentops",
+  "shortName": "tarot-optional-check"
+}

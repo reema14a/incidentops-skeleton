@@ -28,7 +28,7 @@ logger.propagate = True
 logger.addFilter(DBPrefixFilter())
 
 # Schema version for migration tracking
-CURRENT_SCHEMA_VERSION = 4
+CURRENT_SCHEMA_VERSION = 5
 
 
 class DatabaseError(Exception):
@@ -449,6 +449,40 @@ def _apply_migration_v4(conn: sqlite3.Connection) -> None:
     logger.info("Applied migration v4: Created insights_history table")
 
 
+def _apply_migration_v5(conn: sqlite3.Connection) -> None:
+    """
+    Apply schema version 5: Add tarot_card column to insights_history table.
+    
+    This migration adds a nullable tarot_card TEXT column to the insights_history table
+    to store tarot card data (name, meaning, risk_alignment, omen_message) as JSON.
+    
+    The column is nullable for backward compatibility with existing records.
+    
+    Args:
+        conn: Database connection.
+    """
+    cursor = conn.cursor()
+    
+    # Add tarot_card column to insights_history if it doesn't exist
+    if not _column_exists(conn, 'insights_history', 'tarot_card'):
+        cursor.execute("""
+            ALTER TABLE insights_history
+            ADD COLUMN tarot_card TEXT
+        """)
+        logger.info("Added tarot_card column to insights_history table")
+    else:
+        logger.info("tarot_card column already exists in insights_history table")
+    
+    # Record migration
+    cursor.execute("""
+        INSERT INTO migrations (version, description)
+        VALUES (?, ?)
+    """, (5, "Add tarot_card column to insights_history table for Tarot Oracle integration"))
+    
+    conn.commit()
+    logger.info("Applied migration v5: Added tarot_card column to insights_history table")
+
+
 def _run_migrations(conn: sqlite3.Connection) -> None:
     """
     Run all pending migrations in order.
@@ -464,8 +498,9 @@ def _run_migrations(conn: sqlite3.Connection) -> None:
         2: _apply_migration_v2,
         3: _apply_migration_v3,
         4: _apply_migration_v4,
+        5: _apply_migration_v5,
         # Future migrations can be added here:
-        # 5: _apply_migration_v5,
+        # 6: _apply_migration_v6,
     }
     
     # Apply pending migrations
@@ -760,7 +795,7 @@ def insert_notification_event(run_id: int, channel: str, status: str, response: 
         return False
 
 
-def insert_insights_history(run_id: int, insights_json: dict) -> bool:
+def insert_insights_history(run_id: int, insights_json: dict, tarot_card: Optional[dict] = None) -> bool:
     """
     Insert a governance insights history record for a pipeline run.
     
@@ -772,6 +807,12 @@ def insert_insights_history(run_id: int, insights_json: dict) -> bool:
         insights_json: Dictionary containing governance insights data. This is the
                       full output from GovernanceInsightsAgent and will be stored
                       as JSON in the insights_data column.
+        tarot_card: Optional dictionary containing tarot card data with keys:
+                   - card_name (str): Name of the tarot card
+                   - meaning (str): Card interpretation
+                   - risk_alignment (str): Risk alignment (e.g., "disruption", "stability")
+                   - omen_message (str): Contextual message for incident operations
+                   If provided, will be stored as JSON in the tarot_card column.
                    
     Returns:
         bool: True if insertion succeeded, False otherwise.
@@ -783,6 +824,12 @@ def insert_insights_history(run_id: int, insights_json: dict) -> bool:
                 "summary": "System stability improving",
                 "trends": ["Decreasing incident count", "Improved response times"],
                 "recommendations": ["Continue monitoring", "Review automation rules"]
+            },
+            tarot_card={
+                "card_name": "The Tower",
+                "meaning": "Sudden change, upheaval, chaos",
+                "risk_alignment": "disruption",
+                "omen_message": "Beware of cascading failures"
             }
         )
     """
@@ -795,15 +842,19 @@ def insert_insights_history(run_id: int, insights_json: dict) -> bool:
             # Serialize the insights_json to JSON string
             insights_data_json = json.dumps(insights_json)
             
+            # Serialize tarot_card to JSON string if provided
+            tarot_card_json = json.dumps(tarot_card) if tarot_card is not None else None
+            
             # Get current timestamp in ISO 8601 format with microseconds
             timestamp = datetime.utcnow().isoformat(timespec="microseconds")
             
             cursor.execute("""
-                INSERT INTO insights_history (run_id, insights_data, timestamp)
-                VALUES (?, ?, ?)
-            """, (run_id, insights_data_json, timestamp))
+                INSERT INTO insights_history (run_id, insights_data, timestamp, tarot_card)
+                VALUES (?, ?, ?, ?)
+            """, (run_id, insights_data_json, timestamp, tarot_card_json))
             
-            logger.info(f"Inserted insights history for run_id {run_id} at {timestamp}")
+            tarot_msg = " with tarot card" if tarot_card is not None else ""
+            logger.info(f"Inserted insights history for run_id {run_id} at {timestamp}{tarot_msg}")
             return True
             
     except Exception as e:
@@ -1625,6 +1676,7 @@ def get_insights_history(limit: Optional[int] = None) -> list[dict]:
                    - run_id (int): Associated pipeline run ID
                    - insights_data (str): Full insights as JSON string
                    - timestamp (str): ISO format timestamp when insights were generated
+                   - tarot_card (str): Tarot card data as JSON string (may be None)
                    Returns empty list if query fails or no records exist.
         
     Example:
@@ -1639,14 +1691,19 @@ def get_insights_history(limit: Optional[int] = None) -> list[dict]:
             print(f"Insights for run {insight['run_id']} at {insight['timestamp']}")
             insights_data = json.loads(insight['insights_data'])
             print(f"Summary: {insights_data.get('summary', 'N/A')}")
+            
+            # Process tarot card if present
+            if insight['tarot_card']:
+                tarot_data = json.loads(insight['tarot_card'])
+                print(f"Tarot: {tarot_data['card_name']} - {tarot_data['meaning']}")
     """
     try:
         with get_connection() as conn:
             cursor = conn.cursor()
             
-            # Build query with optional limit
+            # Build query with optional limit - include tarot_card column
             query = """
-                SELECT id, run_id, insights_data, timestamp
+                SELECT id, run_id, insights_data, timestamp, tarot_card
                 FROM insights_history
                 ORDER BY timestamp DESC
             """
@@ -1664,7 +1721,8 @@ def get_insights_history(limit: Optional[int] = None) -> list[dict]:
                     'id': row['id'],
                     'run_id': row['run_id'],
                     'insights_data': row['insights_data'],
-                    'timestamp': row['timestamp']
+                    'timestamp': row['timestamp'],
+                    'tarot_card': row['tarot_card']
                 })
             
             logger.info(f"Retrieved {len(results)} insights history record(s)" + (f" (limit={limit})" if limit else ""))
@@ -1672,7 +1730,7 @@ def get_insights_history(limit: Optional[int] = None) -> list[dict]:
             
     except Exception as e:
         logger.error(f"Failed to retrieve insights history: {e}")
-        return []
+        return 
 
 
 # ============================================================================

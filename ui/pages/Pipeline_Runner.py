@@ -115,6 +115,12 @@ with col2:
 
 # Execute pipeline
 if run_button:
+
+    # 🚨 Validation: prevent pipeline run without file or text
+    if uploaded_file is None and not log_text.strip():
+        st.warning("Please provide incident logs first — upload a file or paste logs in the text box.")
+        st.stop()
+
     with st.spinner("🔄 Running pipeline... This may take a moment."):
         # Determine input source
         input_text = None

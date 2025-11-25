@@ -9,7 +9,7 @@ scripts/
 
 .venv/
 data/output/
-data/db/*.db
+data/db/*.db*
 
 .kiro/cache/
 .kiro/tmp/
@@ -19,3 +19,4 @@ data/db/*.db
 
 # Streamlit
 .streamlit/
+CurrentPlan.md
