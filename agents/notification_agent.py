@@ -6,6 +6,7 @@ from typing import Dict, Any, List, Optional
 from agents.base_agent import BaseAgent
 from llm.mcp_client import MCPClient, MCPToolError, MCPConnectionError, MCPTimeoutError
 from config.settings_loader import get_settings
+from db import db_util
 
 
 class NotificationAgent(BaseAgent):
@@ -280,43 +281,58 @@ class NotificationAgent(BaseAgent):
             MCPToolError: If MCP tool invocation fails
         """
         settings = get_settings()
-        recipient = settings.get_secret('GMAIL_RECIPIENT')
-        
-        if not recipient:
-            raise ValueError("GMAIL_RECIPIENT environment variable is required for gmail notifications")
-        
-        # Prepare parameters for gmail.send MCP tool
-        params = {
-            'to': recipient,
-            'subject': content['subject'],
-            'body': content['body']
-        }
-        
-        self.log(f"Sending Gmail notification: {content['subject']}")
-        
-        # Call MCP tool
-        result = self.mcp_client.call_tool(tool_name, params)
-        
-        if result['success']:
-            self.log(f"Gmail notification sent successfully")
-            return {
-                'channel': 'gmail',
-                'status': 'sent',
+        recipients = db_util.get_notification_settings("gmail")
+
+        # fallback
+        if not recipients:
+            env_recipient = settings.get_secret("GMAIL_RECIPIENT")
+            if env_recipient:
+                recipients = [env_recipient]
+
+        if not recipients:
+            raise ValueError("No Gmail recipients configured")
+
+        self.log(f"Sending Gmail notification to {recipients}: {content['subject']}")
+
+        per_recipient = []
+        overall_success = True
+
+        # loop over each recipient
+        for r in recipients:
+            params = {
+                'to': r,
                 'subject': content['subject'],
-                'priority': content['priority'],
-                'timestamp': content['timestamp'],
-                'mcp_result': result['result'],
-                'request_id': result['request_id']
+                'body': content['body']
             }
-        else:
-            error_msg = result['error']['message']
-            self.log(f"Gmail notification failed: {error_msg}")
-            raise MCPToolError(
-                f"Gmail notification failed: {error_msg}",
-                tool_name=tool_name,
-                request_id=result['request_id'],
-                server_error=result['error']
-            )
+
+            result = self.mcp_client.call_tool(tool_name, params)
+
+            # normalize result values into simple serializable types
+            per_recipient.append({
+                'recipient': r,
+                'success': bool(result.get('success', False)),
+                'mcp_result': result.get('result'),
+                'error': result.get('error'),
+                'request_id': result.get('request_id'),
+            })
+
+            if not result.get('success', False):
+                overall_success = False
+                self.log(f"✗ Gmail notification failed for {r}: {result.get('error')}")
+        
+        # Create uniform channel-level dict for orchestrator
+        return {
+            'channel': 'gmail',
+            'status': 'sent' if overall_success else 'partial_failure',
+            'subject': content['subject'],
+            'priority': content['priority'],
+            'timestamp': content['timestamp'],
+            # include per-recipient details but also add a serializable summary in mcp_result
+            'results': per_recipient,
+            # keep top-level short serializable copy for the orchestrator DB writer
+            'mcp_result': {'sent_to': [p['recipient'] for p in per_recipient if p['success']]},
+            'error': None if overall_success else {'failed': [p['recipient'] for p in per_recipient if not p['success']]},
+        }
     
     def _send_pushover_notification(self, tool_name: str, content: Dict[str, Any]) -> Dict[str, Any]:
         """

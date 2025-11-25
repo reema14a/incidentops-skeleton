@@ -144,10 +144,13 @@ Deep Governance Insights
   
 ### **Phase 6 — Notifications**
 
-* Notification channel/status viewer
-* Support configuration of multiple Gmail recipients.
-* Show recent notification events.
-* Provide "Send Test Notification".
+* Display enabled notification channels
+* Read recipients from DB via `get_notification_settings()`
+* Allow user to update Gmail recipients  
+  - Save via `update_notification_settings()`
+* Display recent notification events (`get_notifications()`)
+* Provide "Send Test Notification"
+
 
 ### **Phase 7 — Navigation Improvements**
 - Dashboards set as default landing page.
@@ -251,14 +254,16 @@ Deep Governance Insights
 
 ## **Phase 6 — Notifications**
 
-* [ ] Create `ui/pages/Notifications.py`
-* [ ] Show enabled channels from settings
-* [ ] Show last notification results
-* [ ] Show success/error messages
-- [ ] Implement Notifications page
-- [ ] Add field for configuring multiple Gmail recipient emails
-- [ ] Display list of recent notification events from DB
-- [ ] Add "Send Test Notification" action
+# Phase 6 — Notifications
+
+- [x] Create ui/pages/Notifications.py
+- [x] Display enabled channels from settings
+- [x] Display current recipients from DB
+- [x] Editable multi-email input field
+- [x] Save changes using db_util.update_notification_settings
+- [x] Show recent notification events via get_notifications()
+- [x] Add "Send Test Notification" action
+- [x] Add success/error banners
 
 ---
 

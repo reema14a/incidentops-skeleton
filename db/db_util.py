@@ -28,7 +28,7 @@ logger.propagate = True
 logger.addFilter(DBPrefixFilter())
 
 # Schema version for migration tracking
-CURRENT_SCHEMA_VERSION = 5
+CURRENT_SCHEMA_VERSION = 6
 
 
 class DatabaseError(Exception):
@@ -482,6 +482,44 @@ def _apply_migration_v5(conn: sqlite3.Connection) -> None:
     conn.commit()
     logger.info("Applied migration v5: Added tarot_card column to insights_history table")
 
+def _apply_migration_v6(conn: sqlite3.Connection) -> None:
+    """
+    Apply schema version 6: Add notification_settings table for configurable recipients.
+    Stores comma-separated recipients per channel.
+    """
+    cursor = conn.cursor()
+
+    # Create notification_settings table if not exists
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS notification_settings (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            channel TEXT NOT NULL,
+            recipients TEXT NOT NULL,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
+    # Seed gmail recipients from .env for backward compatibility
+    env_recip = os.environ.get("GMAIL_RECIPIENT") or ""
+    if env_recip:
+        cursor.execute("""
+            INSERT INTO notification_settings (channel, recipients)
+            SELECT ?, ?
+            WHERE NOT EXISTS (
+                SELECT 1 FROM notification_settings WHERE channel = ?
+            )
+        """, ("gmail", env_recip, "gmail"))
+
+    # Record migration
+    cursor.execute("""
+        INSERT INTO migrations (version, description)
+        VALUES (?, ?)
+    """, (6, "Add notification_settings table for email/push recipients"))
+    
+    conn.commit()
+    logger.info("Applied migration v6: Created notification_settings table")
+
 
 def _run_migrations(conn: sqlite3.Connection) -> None:
     """
@@ -499,8 +537,9 @@ def _run_migrations(conn: sqlite3.Connection) -> None:
         3: _apply_migration_v3,
         4: _apply_migration_v4,
         5: _apply_migration_v5,
+        6: _apply_migration_v6,
         # Future migrations can be added here:
-        # 6: _apply_migration_v6,
+        # 7: _apply_migration_v7,
     }
     
     # Apply pending migrations
@@ -779,7 +818,10 @@ def insert_notification_event(run_id: int, channel: str, status: str, response: 
             response='{"status": 1, "request": "abc123"}'
         )
     """
+    logger.info(f"Saving notification event with run_id={run_id}")
+
     try:
+
         with get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("""
@@ -792,6 +834,34 @@ def insert_notification_event(run_id: int, channel: str, status: str, response: 
             
     except Exception as e:
         logger.error(f"Failed to insert notification event for run_id {run_id}: {e}")
+        return False
+
+def update_notification_settings(channel: str, recipients: list[str]) -> bool:
+    """
+    Update comma-separated recipients for a given channel.
+    """
+    try:
+        recips = ",".join(r.strip() for r in recipients)
+
+        with get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                UPDATE notification_settings
+                SET recipients = ?, updated_at = CURRENT_TIMESTAMP
+                WHERE channel = ?
+            """, (recips, channel))
+
+            # If 0 rows updated → missing row → insert it
+            if cursor.rowcount == 0:
+                cursor.execute("""
+                    INSERT INTO notification_settings (channel, recipients)
+                    VALUES (?, ?)
+                """, (channel, recips))
+
+        return True
+
+    except Exception as e:
+        logger.error(f"Failed to update notification settings: {e}")
         return False
 
 
@@ -1063,6 +1133,30 @@ def get_notifications(run_id: Optional[int] = None) -> list[dict]:
             
     except Exception as e:
         logger.error(f"Failed to retrieve notifications: {e}")
+        return []
+
+def get_notification_settings(channel: str) -> list[str]:
+    """
+    Return list of recipients configured for the given channel.
+    """
+    try:
+        with get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT recipients 
+                FROM notification_settings
+                WHERE channel = ?
+                LIMIT 1
+            """, (channel,))
+            row = cursor.fetchone()
+
+            if not row:
+                return []
+
+            return [r.strip() for r in row["recipients"].split(",") if r.strip()]
+
+    except Exception as e:
+        logger.error(f"Failed to read notification settings: {e}")
         return []
 
 
@@ -1730,7 +1824,7 @@ def get_insights_history(limit: Optional[int] = None) -> list[dict]:
             
     except Exception as e:
         logger.error(f"Failed to retrieve insights history: {e}")
-        return 
+        return []
 
 
 # ============================================================================

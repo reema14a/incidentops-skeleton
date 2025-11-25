@@ -16,6 +16,7 @@ Pipeline execution stops immediately if any validation fails.
 """
 from typing import Any, List, Dict, Optional
 import logging
+import json
 from datetime import datetime
 from agents.monitor_agent import MonitorAgent
 from agents.llm_alert_summary_agent import LLMAlertSummaryAgent
@@ -450,7 +451,16 @@ class PipelineExecutor:
             if self.run_id:
                 try:
                     insights_data = insights_output.get('insights', {})
-                    success = db_util.insert_insights_history(self.run_id, insights_data)
+                    
+                    # Extract tarot card data if present (optional)
+                    tarot_card = insights_data.get('shadow_risk_interpretation')
+                    
+                    # Insert insights with optional tarot card
+                    success = db_util.insert_insights_history(
+                        self.run_id, 
+                        insights_data,
+                        tarot_card=tarot_card
+                    )
                     self.db_write_status['insights_history'] = success
                     if not success:
                         logger.error(f"Failed to write insights_history for run_id {self.run_id}")
@@ -480,7 +490,12 @@ class PipelineExecutor:
                         try:
                             channel = notification.get('channel', 'unknown')
                             status = notification.get('status', 'unknown')
-                            response = str(notification.get('response', ''))
+                            response = json.dumps({
+                                                    "mcp_result": notification.get("mcp_result"),
+                                                    "error": notification.get("error"),
+                                                    "error_type": notification.get("error_type"),
+                                                    "request_id": notification.get("request_id"),
+                                                }, ensure_ascii=False)
                             
                             success = db_util.insert_notification_event(
                                 self.run_id, 
@@ -541,9 +556,11 @@ class PipelineExecutor:
         except ValueError as e:
             print(f"\n❌ Pipeline failed: Data validation error")
             print(f"   {str(e)}")
+            logger.error(f"\n❌ Pipeline failed: Data validation error: {str(e)}")
             raise
         except Exception as e:
             print(f"\n❌ Pipeline failed: {str(e)}")
+            logger.error(f"\n❌ Pipeline failed: {str(e)}")
             raise
 
 
