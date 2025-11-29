@@ -1,0 +1,273 @@
+# Sample logs demonstrating high-severity incidents that trigger notifications
+# These logs simulate a critical system outage scenario with multiple ERROR-level events
+# Expected behavior: LLMGovernanceAgent should classify as HIGH or CRITICAL risk
+# Expected outcome: NotificationAgent should send alerts via configured channels
+2025-11-17 10:01:03 ERROR Database connection timeout after 30 seconds
+2025-11-17 10:02:15 ERROR Database connection pool exhausted - max connections reached
+2025-11-17 10:02:47 WARNING Memory threshold exceeded - 85% utilization
+2025-11-17 10:03:22 ERROR Failed to execute query: connection lost to primary database
+2025-11-17 10:04:01 ERROR Authentication service unreachable - timeout after 10 seconds
+2025-11-17 10:05:12 INFO System startup complete
+2025-11-17 10:06:45 ERROR Critical: Payment processing service down - transactions failing
+2025-11-17 10:07:33 ERROR Failed to write to disk: /var/log/app.log - disk full
+2025-11-17 10:08:19 ERROR API gateway returning 503 - service unavailable
+2025-11-17 10:09:15 WARNING CPU usage at 85% - approaching critical threshold
+2025-11-17 10:10:02 ERROR Cache cluster connection failed - Redis timeout
+2025-11-17 10:11:30 ERROR Message queue overflow - 10000+ messages pending
+2025-11-17 10:12:01 INFO Request processed successfully
+2025-11-17 10:13:45 WARNING Disk space low on /var partition - 90% full
+2025-11-17 10:14:22 ERROR Load balancer health check failed for 3 backend servers
+# Summary: 10 ERROR events, 3 WARNING events
+# This volume and severity should trigger HIGH or CRITICAL risk classification
+# With USE_REAL_OPENAI=true, the LLM will analyze these logs and determine appropriate risk level
+# With USE_REAL_OPENAI=false (mock mode), the system uses fallback risk assessment
+2025-11-05T04:00:00Z | general | high | general alert: timeout errors (severity=HIGH)
+2025-11-05T05:00:00Z | database | high | database alert: resource exhaustion (severity=HIGH)
+2025-11-05T06:00:00Z | network | critical | Automated alert - network: connection resets
+2025-11-05T07:00:00Z | general | critical | Detected general issue affecting subsystem. symptom: permission denied
+2025-11-05T08:00:00Z | general | critical | Detected general issue affecting subsystem. symptom: authentication failures
+2025-11-05T09:00:00Z | network | high | network incident reported: permission denied
+2025-11-05T10:00:00Z | security | high | security alert: authentication failures (severity=HIGH)
+2025-11-05T11:00:00Z | network | high | network incident reported: authentication failures
+2025-11-05T12:00:00Z | database | high | database alert: authentication failures (severity=HIGH)
+2025-11-05T13:00:00Z | auth | critical | auth alert: authentication failures (severity=CRITICAL)
+2025-11-05T14:00:00Z | auth | high | auth alert: high latency (severity=HIGH)
+2025-11-05T15:00:00Z | database | high | Automated alert - database: resource exhaustion
+2025-11-05T16:00:00Z | security | critical | Detected security issue affecting subsystem. symptom: resource exhaustion
+2025-11-05T17:00:00Z | application | critical | application incident reported: connection resets
+2025-11-05T18:00:00Z | application | high | Detected application issue affecting subsystem. symptom: query timeouts
+2025-11-05T19:00:00Z | network | high | Automated alert - network: failed backups
+2025-11-05T20:00:00Z | auth | critical | Automated alert - auth: timeout errors
+2025-11-05T21:00:00Z | network | low | network alert: query timeouts (severity=LOW)
+2025-11-05T22:00:00Z | application | high | application alert: high latency (severity=HIGH)
+2025-11-05T23:00:00Z | auth | high | auth alert: timeout errors (severity=HIGH)
+2025-11-06T00:00:00Z | application | high | application incident reported: failed backups
+2025-11-06T01:00:00Z | network | high | Automated alert - network: high latency
+2025-11-06T02:00:00Z | application | high | application alert: failed backups (severity=HIGH)
+2025-11-06T03:00:00Z | application | critical | Automated alert - application: query timeouts
+2025-11-06T04:00:00Z | disk | critical | Automated alert - disk: query timeouts
+2025-11-06T05:00:00Z | disk | high | disk incident reported: timeout errors
+2025-11-06T06:00:00Z | security | medium | security incident reported: authentication failures
+2025-11-06T07:00:00Z | general | low | Detected general issue affecting subsystem. symptom: high latency
+2025-11-06T08:00:00Z | application | medium | application alert: high latency (severity=MEDIUM)
+2025-11-06T09:00:00Z | disk | high | disk incident reported: failed backups
+2025-11-06T10:00:00Z | disk | high | disk incident reported: timeout errors
+2025-11-06T11:00:00Z | application | low | application alert: connection resets (severity=LOW)
+2025-11-06T12:00:00Z | disk | high | Automated alert - disk: timeout errors
+2025-11-06T13:00:00Z | auth | critical | auth alert: query timeouts (severity=CRITICAL)
+2025-11-06T14:00:00Z | database | medium | database alert: permission denied (severity=MEDIUM)
+2025-11-06T15:00:00Z | application | low | Automated alert - application: high latency
+2025-11-06T16:00:00Z | application | high | application alert: permission denied (severity=HIGH)
+2025-11-06T17:00:00Z | auth | high | Automated alert - auth: resource exhaustion
+2025-11-06T18:00:00Z | disk | high | Detected disk issue affecting subsystem. symptom: failed backups
+2025-11-06T19:00:00Z | auth | critical | auth alert: query timeouts (severity=CRITICAL)
+2025-11-06T20:00:00Z | general | medium | general incident reported: high latency
+2025-11-06T21:00:00Z | application | critical | application alert: permission denied (severity=CRITICAL)
+2025-11-06T22:00:00Z | general | high | Detected general issue affecting subsystem. symptom: permission denied
+2025-11-06T23:00:00Z | application | high | application alert: authentication failures (severity=HIGH)
+2025-11-07T00:00:00Z | security | critical | Detected security issue affecting subsystem. symptom: timeout errors
+2025-11-07T01:00:00Z | auth | high | Detected auth issue affecting subsystem. symptom: high latency
+2025-11-07T02:00:00Z | network | high | Automated alert - network: permission denied
+2025-11-07T03:00:00Z | disk | high | disk alert: resource exhaustion (severity=HIGH)
+2025-11-07T04:00:00Z | application | critical | Detected application issue affecting subsystem. symptom: connection resets
+2025-11-07T05:00:00Z | disk | medium | Detected disk issue affecting subsystem. symptom: authentication failures
+2025-11-07T06:00:00Z | security | low | Detected security issue affecting subsystem. symptom: timeout errors
+2025-11-07T07:00:00Z | application | high | application alert: failed backups (severity=HIGH)
+2025-11-07T08:00:00Z | application | high | Automated alert - application: timeout errors
+2025-11-07T09:00:00Z | database | high | database alert: permission denied (severity=HIGH)
+2025-11-07T10:00:00Z | disk | low | disk alert: resource exhaustion (severity=LOW)
+2025-11-07T11:00:00Z | security | high | Automated alert - security: high latency
+2025-11-07T12:00:00Z | database | medium | Detected database issue affecting subsystem. symptom: connection resets
+2025-11-07T13:00:00Z | database | high | database alert: resource exhaustion (severity=HIGH)
+2025-11-07T14:00:00Z | database | high | database incident reported: timeout errors
+2025-11-07T15:00:00Z | database | high | database alert: connection resets (severity=HIGH)
+2025-11-07T16:00:00Z | application | high | application alert: resource exhaustion (severity=HIGH)
+2025-11-07T17:00:00Z | database | low | Detected database issue affecting subsystem. symptom: failed backups
+2025-11-07T18:00:00Z | database | low | database incident reported: high latency
+2025-11-07T19:00:00Z | security | critical | Detected security issue affecting subsystem. symptom: authentication failures
+2025-11-07T20:00:00Z | disk | high | Detected disk issue affecting subsystem. symptom: authentication failures
+2025-11-07T21:00:00Z | general | high | Automated alert - general: query timeouts
+2025-11-07T22:00:00Z | application | critical | Automated alert - application: high latency
+2025-11-07T23:00:00Z | network | high | Detected network issue affecting subsystem. symptom: query timeouts
+2025-11-08T00:00:00Z | database | high | Detected database issue affecting subsystem. symptom: connection resets
+2025-11-08T01:00:00Z | security | high | security alert: timeout errors (severity=HIGH)
+2025-11-08T02:00:00Z | auth | high | Automated alert - auth: permission denied
+2025-11-08T03:00:00Z | network | high | Automated alert - network: authentication failures
+2025-11-08T04:00:00Z | network | high | network incident reported: connection resets
+2025-11-08T05:00:00Z | application | high | Automated alert - application: high latency
+2025-11-08T06:00:00Z | disk | critical | disk alert: query timeouts (severity=CRITICAL)
+2025-11-08T07:00:00Z | general | medium | general incident reported: resource exhaustion
+2025-11-08T08:00:00Z | application | critical | Detected application issue affecting subsystem. symptom: high latency
+2025-11-08T09:00:00Z | disk | critical | Detected disk issue affecting subsystem. symptom: authentication failures
+2025-11-08T10:00:00Z | security | medium | Detected security issue affecting subsystem. symptom: query timeouts
+2025-11-08T11:00:00Z | disk | medium | disk alert: authentication failures (severity=MEDIUM)
+2025-11-08T12:00:00Z | general | low | general incident reported: connection resets
+2025-11-08T13:00:00Z | database | critical | Automated alert - database: timeout errors
+2025-11-08T14:00:00Z | security | high | security alert: failed backups (severity=HIGH)
+2025-11-08T15:00:00Z | security | critical | Detected security issue affecting subsystem. symptom: query timeouts
+2025-11-08T16:00:00Z | auth | low | Automated alert - auth: timeout errors
+2025-11-08T17:00:00Z | general | critical | Automated alert - general: query timeouts
+2025-11-08T18:00:00Z | auth | high | Automated alert - auth: query timeouts
+2025-11-08T19:00:00Z | network | critical | network alert: permission denied (severity=CRITICAL)
+2025-11-08T20:00:00Z | application | high | Automated alert - application: permission denied
+2025-11-08T21:00:00Z | application | high | application incident reported: authentication failures
+2025-11-08T22:00:00Z | network | critical | network incident reported: authentication failures
+2025-11-08T23:00:00Z | auth | medium | auth incident reported: authentication failures
+2025-11-09T00:00:00Z | database | medium | database incident reported: connection resets
+2025-11-09T01:00:00Z | security | high | security incident reported: resource exhaustion
+2025-11-09T02:00:00Z | general | low | general alert: timeout errors (severity=LOW)
+2025-11-09T03:00:00Z | database | critical | Automated alert - database: permission denied
+2025-11-09T04:00:00Z | security | critical | security incident reported: failed backups
+2025-11-09T05:00:00Z | database | critical | database alert: high latency (severity=CRITICAL)
+2025-11-09T06:00:00Z | general | high | general incident reported: connection resets
+2025-11-09T07:00:00Z | database | low | database alert: authentication failures (severity=LOW)
+2025-11-09T08:00:00Z | database | critical | Automated alert - database: resource exhaustion
+2025-11-09T09:00:00Z | database | medium | Detected database issue affecting subsystem. symptom: authentication failures
+2025-11-09T10:00:00Z | security | critical | security incident reported: authentication failures
+2025-11-09T11:00:00Z | general | critical | general alert: high latency (severity=CRITICAL)
+2025-11-09T12:00:00Z | disk | critical | disk incident reported: permission denied
+2025-11-09T13:00:00Z | general | high | Detected general issue affecting subsystem. symptom: high latency
+2025-11-09T14:00:00Z | network | high | Automated alert - network: permission denied
+2025-11-09T15:00:00Z | disk | high | Detected disk issue affecting subsystem. symptom: query timeouts
+2025-11-09T16:00:00Z | application | critical | Automated alert - application: authentication failures
+2025-11-09T17:00:00Z | network | critical | network alert: authentication failures (severity=CRITICAL)
+2025-11-09T18:00:00Z | disk | high | Detected disk issue affecting subsystem. symptom: resource exhaustion
+2025-11-09T19:00:00Z | application | critical | application alert: timeout errors (severity=CRITICAL)
+2025-11-09T20:00:00Z | database | medium | database incident reported: connection resets
+2025-11-09T21:00:00Z | security | critical | security incident reported: timeout errors
+2025-11-09T22:00:00Z | network | high | network incident reported: failed backups
+2025-11-09T23:00:00Z | auth | high | auth alert: timeout errors (severity=HIGH)
+2025-11-10T00:00:00Z | database | high | Automated alert - database: connection resets
+2025-11-10T01:00:00Z | general | critical | general alert: timeout errors (severity=CRITICAL)
+2025-11-10T02:00:00Z | general | high | general incident reported: query timeouts
+2025-11-10T03:00:00Z | disk | critical | disk alert: timeout errors (severity=CRITICAL)
+2025-11-10T04:00:00Z | application | high | Detected application issue affecting subsystem. symptom: resource exhaustion
+2025-11-10T05:00:00Z | application | high | Automated alert - application: connection resets
+2025-11-10T06:00:00Z | general | medium | Automated alert - general: timeout errors
+2025-11-10T07:00:00Z | auth | high | auth alert: query timeouts (severity=HIGH)
+2025-11-10T08:00:00Z | disk | medium | Automated alert - disk: permission denied
+2025-11-10T09:00:00Z | general | medium | general alert: failed backups (severity=MEDIUM)
+2025-11-10T10:00:00Z | auth | low | auth alert: authentication failures (severity=LOW)
+2025-11-10T11:00:00Z | general | high | Detected general issue affecting subsystem. symptom: failed backups
+2025-11-10T12:00:00Z | auth | high | Detected auth issue affecting subsystem. symptom: connection resets
+2025-11-10T13:00:00Z | security | medium | security incident reported: authentication failures
+2025-11-10T14:00:00Z | auth | low | Automated alert - auth: connection resets
+2025-11-10T15:00:00Z | database | high | Detected database issue affecting subsystem. symptom: failed backups
+2025-11-10T16:00:00Z | network | critical | Detected network issue affecting subsystem. symptom: failed backups
+2025-11-10T17:00:00Z | network | medium | Automated alert - network: high latency
+2025-11-10T18:00:00Z | network | high | Automated alert - network: query timeouts
+2025-11-10T19:00:00Z | auth | high | auth alert: authentication failures (severity=HIGH)
+2025-11-10T20:00:00Z | general | medium | general alert: high latency (severity=MEDIUM)
+2025-11-10T21:00:00Z | network | critical | Automated alert - network: timeout errors
+2025-11-10T22:00:00Z | application | medium | Detected application issue affecting subsystem. symptom: high latency
+2025-11-10T23:00:00Z | auth | high | Detected auth issue affecting subsystem. symptom: connection resets
+2025-11-11T00:00:00Z | disk | low | Detected disk issue affecting subsystem. symptom: high latency
+2025-11-11T01:00:00Z | database | medium | Detected database issue affecting subsystem. symptom: timeout errors
+2025-11-11T02:00:00Z | network | medium | Detected network issue affecting subsystem. symptom: connection resets
+2025-11-11T03:00:00Z | application | high | Detected application issue affecting subsystem. symptom: failed backups
+2025-11-11T04:00:00Z | disk | medium | Detected disk issue affecting subsystem. symptom: authentication failures
+2025-11-11T05:00:00Z | general | low | general alert: failed backups (severity=LOW)
+2025-11-11T06:00:00Z | disk | low | disk incident reported: failed backups
+2025-11-11T07:00:00Z | security | critical | Detected security issue affecting subsystem. symptom: failed backups
+2025-11-11T08:00:00Z | database | critical | Detected database issue affecting subsystem. symptom: failed backups
+2025-11-11T09:00:00Z | network | medium | network incident reported: timeout errors
+2025-11-11T10:00:00Z | auth | medium | Automated alert - auth: permission denied
+2025-11-11T11:00:00Z | application | critical | application alert: failed backups (severity=CRITICAL)
+2025-11-11T12:00:00Z | general | high | general incident reported: query timeouts
+2025-11-11T13:00:00Z | general | critical | general incident reported: authentication failures
+2025-11-11T14:00:00Z | general | medium | general incident reported: connection resets
+2025-11-11T15:00:00Z | application | high | Automated alert - application: high latency
+2025-11-11T16:00:00Z | application | critical | application alert: connection resets (severity=CRITICAL)
+2025-11-11T17:00:00Z | database | high | database alert: failed backups (severity=HIGH)
+2025-11-11T18:00:00Z | database | high | database alert: authentication failures (severity=HIGH)
+2025-11-11T19:00:00Z | disk | high | disk incident reported: high latency
+2025-11-11T20:00:00Z | database | low | Detected database issue affecting subsystem. symptom: authentication failures
+2025-11-11T21:00:00Z | application | high | application incident reported: connection resets
+2025-11-11T22:00:00Z | security | high | security alert: query timeouts (severity=HIGH)
+2025-11-11T23:00:00Z | network | high | Detected network issue affecting subsystem. symptom: authentication failures
+2025-11-12T00:00:00Z | security | medium | security alert: timeout errors (severity=MEDIUM)
+2025-11-12T01:00:00Z | general | medium | general alert: failed backups (severity=MEDIUM)
+2025-11-12T02:00:00Z | general | high | general alert: connection resets (severity=HIGH)
+2025-11-12T03:00:00Z | network | critical | network alert: permission denied (severity=CRITICAL)
+2025-11-12T04:00:00Z | auth | low | auth incident reported: high latency
+2025-11-12T05:00:00Z | disk | critical | Detected disk issue affecting subsystem. symptom: resource exhaustion
+2025-11-12T06:00:00Z | security | high | Automated alert - security: connection resets
+2025-11-12T07:00:00Z | general | high | general incident reported: authentication failures
+2025-11-12T08:00:00Z | application | critical | Automated alert - application: timeout errors
+2025-11-12T09:00:00Z | disk | high | Automated alert - disk: query timeouts
+2025-11-12T10:00:00Z | security | high | Detected security issue affecting subsystem. symptom: failed backups
+2025-11-12T11:00:00Z | disk | high | disk alert: permission denied (severity=HIGH)
+2025-11-12T12:00:00Z | application | medium | application incident reported: authentication failures
+2025-11-12T13:00:00Z | database | low | database incident reported: permission denied
+2025-11-12T14:00:00Z | network | low | network incident reported: resource exhaustion
+2025-11-12T15:00:00Z | general | high | general incident reported: query timeouts
+2025-11-12T16:00:00Z | security | critical | security alert: high latency (severity=CRITICAL)
+2025-11-12T17:00:00Z | auth | critical | Automated alert - auth: high latency
+2025-11-12T18:00:00Z | general | high | general incident reported: failed backups
+2025-11-12T19:00:00Z | disk | medium | Detected disk issue affecting subsystem. symptom: connection resets
+2025-11-12T20:00:00Z | database | medium | database incident reported: failed backups
+2025-11-12T21:00:00Z | network | high | Detected network issue affecting subsystem. symptom: query timeouts
+2025-11-12T22:00:00Z | auth | critical | auth incident reported: timeout errors
+2025-11-12T23:00:00Z | disk | high | disk incident reported: authentication failures
+2025-11-13T00:00:00Z | auth | critical | auth incident reported: timeout errors
+2025-11-13T01:00:00Z | database | high | Detected database issue affecting subsystem. symptom: connection resets
+2025-11-13T02:00:00Z | auth | critical | Detected auth issue affecting subsystem. symptom: connection resets
+2025-11-13T03:00:00Z | disk | high | Detected disk issue affecting subsystem. symptom: connection resets
+2025-11-13T04:00:00Z | database | critical | Automated alert - database: resource exhaustion
+2025-11-13T05:00:00Z | security | high | Detected security issue affecting subsystem. symptom: connection resets
+2025-11-13T06:00:00Z | security | critical | security incident reported: query timeouts
+2025-11-13T07:00:00Z | security | critical | security incident reported: failed backups
+2025-11-13T08:00:00Z | auth | high | auth alert: timeout errors (severity=HIGH)
+2025-11-13T09:00:00Z | database | high | Automated alert - database: high latency
+2025-11-13T10:00:00Z | disk | critical | disk incident reported: failed backups
+2025-11-13T11:00:00Z | security | high | security incident reported: failed backups
+2025-11-13T12:00:00Z | general | high | Detected general issue affecting subsystem. symptom: query timeouts
+2025-11-13T13:00:00Z | general | high | Automated alert - general: connection resets
+2025-11-13T14:00:00Z | application | medium | Automated alert - application: failed backups
+2025-11-13T15:00:00Z | security | critical | Detected security issue affecting subsystem. symptom: failed backups
+2025-11-13T16:00:00Z | auth | critical | auth incident reported: query timeouts
+2025-11-13T17:00:00Z | network | high | Automated alert - network: permission denied
+2025-11-13T18:00:00Z | database | critical | Automated alert - database: query timeouts
+2025-11-13T19:00:00Z | network | medium | network alert: resource exhaustion (severity=MEDIUM)
+2025-11-13T20:00:00Z | database | medium | database incident reported: authentication failures
+2025-11-13T21:00:00Z | general | high | general alert: connection resets (severity=HIGH)
+2025-11-13T22:00:00Z | application | critical | application alert: timeout errors (severity=CRITICAL)
+2025-11-13T23:00:00Z | disk | high | Automated alert - disk: high latency
+2025-11-14T00:00:00Z | security | high | Automated alert - security: failed backups
+2025-11-14T01:00:00Z | network | critical | network alert: failed backups (severity=CRITICAL)
+2025-11-14T02:00:00Z | security | high | Automated alert - security: permission denied
+2025-11-14T03:00:00Z | general | high | general incident reported: connection resets
+2025-11-14T04:00:00Z | application | critical | Automated alert - application: failed backups
+2025-11-14T05:00:00Z | general | critical | general incident reported: permission denied
+2025-11-14T06:00:00Z | application | high | Automated alert - application: timeout errors
+2025-11-14T07:00:00Z | network | critical | Automated alert - network: timeout errors
+2025-11-14T08:00:00Z | application | medium | Detected application issue affecting subsystem. symptom: permission denied
+2025-11-14T09:00:00Z | security | critical | security incident reported: permission denied
+2025-11-14T10:00:00Z | security | high | Detected security issue affecting subsystem. symptom: query timeouts
+2025-11-14T11:00:00Z | disk | high | Automated alert - disk: authentication failures
+2025-11-14T12:00:00Z | security | medium | Detected security issue affecting subsystem. symptom: authentication failures
+2025-11-14T13:00:00Z | network | high | network alert: connection resets (severity=HIGH)
+2025-11-14T14:00:00Z | database | critical | database incident reported: query timeouts
+2025-11-14T15:00:00Z | auth | low | auth incident reported: authentication failures
+2025-11-14T16:00:00Z | general | critical | general alert: permission denied (severity=CRITICAL)
+2025-11-14T17:00:00Z | network | high | network incident reported: query timeouts
+2025-11-14T18:00:00Z | auth | medium | Detected auth issue affecting subsystem. symptom: resource exhaustion
+2025-11-14T19:00:00Z | disk | critical | Automated alert - disk: query timeouts
+2025-11-14T20:00:00Z | general | medium | general alert: resource exhaustion (severity=MEDIUM)
+2025-11-14T21:00:00Z | security | medium | Automated alert - security: authentication failures
+2025-11-14T22:00:00Z | general | critical | Detected general issue affecting subsystem. symptom: timeout errors
+2025-11-14T23:00:00Z | disk | critical | Detected disk issue affecting subsystem. symptom: query timeouts
+2025-11-15T00:00:00Z | application | high | Automated alert - application: resource exhaustion
+2025-11-15T01:00:00Z | security | medium | Detected security issue affecting subsystem. symptom: authentication failures
+2025-11-15T02:00:00Z | general | critical | Detected general issue affecting subsystem. symptom: query timeouts
+2025-11-15T03:00:00Z | network | high | Automated alert - network: permission denied
+2025-11-15T04:00:00Z | database | critical | database incident reported: failed backups
+2025-11-15T05:00:00Z | auth | medium | auth alert: failed backups (severity=MEDIUM)
+2025-11-15T06:00:00Z | security | high | Detected security issue affecting subsystem. symptom: high latency
+2025-11-15T07:00:00Z | disk | high | Detected disk issue affecting subsystem. symptom: high latency
+2025-11-15T08:00:00Z | security | high | Automated alert - security: high latency
+2025-11-15T09:00:00Z | database | critical | database incident reported: failed backups
+2025-11-15T10:00:00Z | application | critical | Automated alert - application: permission denied
+2025-11-15T11:00:00Z | disk | medium | Detected disk issue affecting subsystem. symptom: high latency
+2025-11-15T12:00:00Z | application | critical | application alert: resource exhaustion (severity=CRITICAL)
+2025-11-15T13:00:00Z | application | critical | Detected application issue affecting subsystem. symptom: connection resets
