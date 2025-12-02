@@ -1818,6 +1818,32 @@ def get_recent_runs(limit: int = 10) -> list[dict]:
         logger.error(f"Failed to retrieve recent runs: {e}")
         return []
 
+def get_audit_summary(run_id: str) -> Optional[dict]:
+    try:
+        with get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT status, count, timestamp, audit_data
+                FROM audit_summary
+                WHERE run_id = ?
+                ORDER BY id DESC
+                LIMIT 1
+            """, (run_id,))
+            
+            row = cursor.fetchone()
+            if row is None:
+                return None
+
+            return {
+                "status": row["status"],
+                "count": row["count"],
+                "timestamp": row["timestamp"],
+                "audit_data": row["audit_data"]
+            }
+    except Exception as e:
+        logger.error(f"Failed to read audit summary: {e}")
+        return None
+
 
 def get_insights_history(limit: Optional[int] = None) -> list[dict]:
     """
