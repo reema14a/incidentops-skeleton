@@ -13,6 +13,8 @@ from pathlib import Path
 from typing import Dict, List, Any
 from datetime import datetime
 
+from utils.formatters import format_timestamp
+
 # Add project root to Python path
 ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
@@ -173,33 +175,35 @@ def get_risk_emoji(risk_level: str) -> str:
     else:
         return '🟢'
 
-def format_timestamp(ts: str) -> str:
-    """Format timestamp for display."""
-    if not ts or ts == "N/A":
-        return "N/A"
-    try:
-        # Remove trailing Z if exists
-        dt = datetime.fromisoformat(ts.replace("Z", ""))
-        return dt.strftime("%Y-%b-%d %H:%M")
-    except:
-        return ts  # fallback
-
-# def short_escalation(text: str) -> str:
-#     """Shorten escalation text for compact display."""
-#     if not text: 
-#         return "N/A"
-#     words = text.strip().split()
-#     return " ".join(words[:2])
-
 
 def render_page():
-    # Page configuration
-    st.title("⚖️ Governance")
-    st.markdown("Risk level, escalation decisions, and compliance analysis from pipeline executions.")
-    st.markdown("---")
 
     # Get latest governance data from database
     governance_data = get_latest_governance_data()
+
+    ts = governance_data.get("execution_timestamp", "N/A")
+
+    # Page configuration
+    # st.title("⚖️ Governance")
+    # st.markdown("Risk level, escalation decisions, and compliance analysis from pipeline executions.")
+    # st.markdown("---")
+
+    col_title, col_meta = st.columns([5, 2])
+
+    with col_title:
+        st.title("⚖️ Governance")
+        st.markdown(
+            " "
+            "Governance results and compliance decisions from the most recent pipeline execution."
+        )
+
+    with col_meta:
+        # Add an empty line to push the caption downward into alignment
+        st.caption(f"Last Execution: {format_timestamp(ts)}")
+        st.caption(f"Pipeline Run ID: #{governance_data.get('run_id', 'N/A')}")
+        
+
+    st.markdown("---")
 
     # Handle empty history
     if not governance_data:
@@ -223,7 +227,15 @@ def render_page():
     # ============================================================================
     # SUMMARY CARD - Always visible at top
     # ============================================================================
-    st.subheader("📊 Summary Card")
+    # First row: Run metadata
+    # col_name, col_details = st.columns([5, 1])
+    
+    # with col_name:
+    st.markdown("### 📊 Summary")
+
+    # with col_details:
+    #     with st.expander("", expanded=False):
+    #         st.json(governance_analysis)
 
     risk_level = governance_analysis.get('risk', 'unknown')
     risk_emoji = get_risk_emoji(risk_level)
@@ -231,33 +243,24 @@ def render_page():
     compliance_count = len(compliance_issues)
 
     # First row: Run metadata
-    col1, col2, col3 = st.columns(3)
+    col1, col2 = st.columns(2)
 
     with col1:
-        st.metric("Pipeline Run ID", f"#{governance_data.get('run_id', 'N/A')}")
+        st.info(f"**🔥 Total Incidents:** {governance_data.get('total_incidents', 0)}")
 
     with col2:
-        formatted_ts = format_timestamp(governance_data.get('execution_timestamp', 'N/A'))
-        st.metric("Execution Time", formatted_ts)
+        st.info(f"**📢 Escalation:** {governance_analysis.get('escalation_category', 'N/A')}")
+    
+
+    col3, col4 = st.columns(2)
 
     with col3:
-        st.metric("Total Incidents", governance_data.get('total_incidents', 0))
-
-    # Second row: Governance metrics
-    col4, col5, col6 = st.columns(3)
+        st.info(f"**⚠️ Risk Level:** {get_risk_emoji(risk_level)}{risk_level.capitalize()}")
 
     with col4:
-        st.metric("Risk Level", f"{get_risk_emoji(risk_level)} {risk_level.capitalize()}")
+        st.info(f"**🛡 Compliance Issues:** {compliance_count}")
 
-    with col5:
-        st.metric("Compliance Issues", compliance_count)
-
-    with col6:
-        st.metric("Escalation", governance_analysis.get('escalation_category', 'N/A'))
-
-    # Compact JSON expander in summary card
-    with st.expander("🔍 View Current Run JSON", expanded=False):
-        st.json(governance_analysis)
+    
 
     st.markdown("---")
 

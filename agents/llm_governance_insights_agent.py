@@ -69,12 +69,13 @@ class GovernanceInsightsAgent(BaseAgent):
         """
         self.log("Analyzing historical governance data...")
         
-        # Draw tarot card before insights generation
-        tarot_card = self._draw_tarot_card()
-        
+        # -----------------------------------------------------
+        # STEP 1 — Retrieve historical data
+        # -----------------------------------------------------
         # Retrieve aggregated historical data from database
         historical_data = self._retrieve_historical_data()
-        
+        tarot_card = None
+
         if not historical_data or not historical_data.get('has_data'):
             self.log("Insufficient historical data for analysis")
             insights = self._generate_no_data_insights()
@@ -86,7 +87,9 @@ class GovernanceInsightsAgent(BaseAgent):
         
         self.log(f"Retrieved historical data: {historical_data['summary']}")
         
-        # Prepare prompt with historical data
+        # -----------------------------------------------------
+        # STEP 2 — Generate insights using LLM
+        # -----------------------------------------------------
         prompt = self.prompt_template.format(
             historical_data=json.dumps(historical_data, indent=2)
         )
@@ -98,6 +101,10 @@ class GovernanceInsightsAgent(BaseAgent):
             # Parse LLM response
             insights = self._parse_llm_response(response)
             
+            # -----------------------------------------------------
+            # STEP 3 — tarot *AFTER* insights exist
+            # -----------------------------------------------------
+            tarot_card = self._draw_tarot_card(insights)
             # Include tarot card data in insights
             insights['shadow_risk_interpretation'] = tarot_card
             
@@ -124,55 +131,51 @@ class GovernanceInsightsAgent(BaseAgent):
                 'insights': fallback_insights
             }
     
-    def _draw_tarot_card(self) -> Optional[Dict[str, Any]]:
+    def _draw_tarot_card(self, insights: Optional[Dict[str, Any]] = None) -> Optional[Dict[str, Any]]:
         """
-        Draw a tarot card through MCP client.
-        
-        Returns:
-            Dict: Tarot card data with keys:
-                - card_name: Name of the card
-                - meaning: Card interpretation
-                - risk_alignment: Governance concept mapping
-                - omen_message: Contextual message for incident ops
-            None: If MCP client is unavailable, disabled, or call fails
+        Draw a tarot card through MCP client, using insights to pick the right card.
         """
-        # Check if tarot is enabled in configuration
+        insights = insights or {}
+
+        # Check tarot config
         try:
             from config.settings_loader import get_settings
             settings = get_settings()
             tarot_enabled = settings.get('tarot', {}).get('enabled', False)
-            
             if not tarot_enabled:
                 self.log("Tarot reading disabled in configuration")
                 return None
         except Exception as e:
-            # If settings can't be loaded, default to disabled
-            self.log(f"Warning: Could not check tarot configuration: {e}")
+            self.log(f"Tarot config load failed: {e}")
             return None
-        
+
         if not self.mcp_client:
-            self.log("MCP client not available, skipping tarot reading")
+            self.log("MCP client not available for tarot")
             return None
-        
+
         try:
-            self.log("Drawing tarot card...")
-            response = self.mcp_client.call_tool('tarot.draw', {})
-            
-            if response.get('success') and response.get('result'):
+            self.log("Drawing tarot card using insights…")
+
+            # Pass insights into tool call
+            response = self.mcp_client.call_tool('tarot.draw', {
+                "insights": insights
+            })
+
+            if response.get("success") and response.get("result"):
                 tarot_data = response['result']
                 self.log(f"🔮 Drew tarot card: {tarot_data.get('card_name', 'Unknown')}")
                 return tarot_data
             else:
-                error_msg = response.get('error', {}).get('message', 'Unknown error')
-                self.log(f"Warning: Tarot draw failed: {error_msg}")
+                err = response.get("error", {}).get("message", "Unknown error")
+                self.log(f"Tarot draw failed: {err}")
                 return None
-                
         except MCPError as e:
             self.log(f"Warning: MCP error during tarot draw: {e.message}")
             return None
         except Exception as e:
             self.log(f"Warning: Unexpected error during tarot draw: {e}")
             return None
+
     
     def _retrieve_historical_data(self) -> Dict[str, Any]:
         """
@@ -288,48 +291,53 @@ class GovernanceInsightsAgent(BaseAgent):
         return simplified
     
     def _parse_llm_response(self, response: str) -> Dict[str, Any]:
-        """
-        Parse the LLM response into structured insights.
-        
-        Args:
-            response: Raw LLM response string
-            
-        Returns:
-            Dict: Parsed insights object
-        """
         parsed = extract_json_block(response)
-        
+
+        required_list_fields = [
+            'trend_summary',
+            'risk_trend',
+            'compliance_trend',
+            'recurring_issues',
+            'category_hotspots',
+            'recommendations',
+            'anomaly_detection'
+        ]
+
         if parsed:
-            # Validate required fields
-            required_fields = [
-                'trend_summary',
-                'risk_trend',
-                'compliance_trend',
-                'recurring_issues',
-                'category_hotspots',
-                'recommendations',
-                'anomaly_detection'
-            ]
-            
-            # Ensure all required fields exist
-            for field in required_fields:
+            # Ensure required fields exist
+            for field in required_list_fields:
                 if field not in parsed:
-                    parsed[field] = [] if field in ['recurring_issues', 'category_hotspots', 'recommendations'] else 'N/A'
-            
+                    parsed[field] = []
+
+            # Structural normalization (no sanitization)
+            for field in required_list_fields:
+
+                # Convert single string → list of 1
+                if isinstance(parsed[field], str):
+                    parsed[field] = [parsed[field]]
+
+                # Ensure list items are strings
+                if isinstance(parsed[field], list):
+                    parsed[field] = [
+                        str(item).strip()
+                        for item in parsed[field]
+                        if isinstance(item, (str, int, float)) and str(item).strip()
+                    ]
+
             return parsed
-        
-        # Fallback mode
+
+        # Fallback
         self.log("Warning: LLM response was not valid JSON, using fallback")
         return {
-            'trend_summary': response[:200] if response else 'No analysis available',
-            'risk_trend': 'Unable to parse',
-            'compliance_trend': 'Unable to parse',
+            'trend_summary': [response[:200]] if response else ['No analysis available'],
+            'risk_trend': ['Unable to parse'],
+            'compliance_trend': ['Unable to parse'],
             'recurring_issues': [],
             'category_hotspots': [],
             'recommendations': ['Manual review recommended - LLM response parsing failed'],
-            'anomaly_detection': 'Unable to parse'
+            'anomaly_detection': ['Unable to parse']
         }
-    
+
     def _generate_no_data_insights(self) -> Dict[str, Any]:
         """
         Generate insights when insufficient historical data exists.

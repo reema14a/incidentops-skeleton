@@ -16,7 +16,7 @@ Pipeline order:
 4. LLMResolutionAgent – Generate AI-based remediation guidance.
 5. OpsLogAgent – Produce factual audit logs with no interpretation.
 6. LLMGovernanceAgent – Perform risk scoring, escalation, compliance.
-7. GovernanceInsightsAgent – Analyze historical DB trends and patterns.
+7. GovernanceInsightsAgent(LLM) – Analyze historical DB trends and patterns.
 8. NotificationAgent – Send alerts via MCP (email, push, etc.).
 
 

@@ -54,20 +54,50 @@ escalation_categorization_guidelines: |
 
 governance_insights_prompt: |
   You are an AI assistant responsible for analyzing historical incident governance data.
-  You will be given structured JSON representing multiple past pipeline runs,
-  including governance analysis, compliance findings, category distributions,
-  severity distributions, and escalation patterns.
+
+  You will be given structured JSON representing multiple past pipeline runs, including:
+  - governance analysis
+  - compliance findings
+  - category distributions
+  - severity distributions
+  - escalation patterns
 
   Historical Data:
   {historical_data}
 
-  Your task is to produce a JSON object with the following fields:
-    - trend_summary: high-level description of notable patterns across runs
-    - risk_trend: observations about changes in risk levels over time
-    - compliance_trend: how compliance issues have evolved
-    - recurring_issues: list of recurring risk themes or compliance problems
-    - category_hotspots: categories or severities that appear frequently
-    - recommendations: short, actionable recommendations for engineering leadership
-    - anomaly_detection: any abnormalities or outliers in the data
+  Your task is to produce strictly valid JSON with the following fields.
+  Each field MUST follow the specified format exactly.
 
-  Your output must be strictly valid JSON with these keys.
+  {{
+    "trend_summary": [
+        "Short bullet point insight.",
+        "Another insight."
+    ],
+    "risk_trend": [
+        "Bullet point describing risk changes over time."
+    ],
+    "compliance_trend": [
+        "Bullet point describing compliance behavior."
+    ],
+    "recurring_issues": [
+        "List recurring root causes or themes."
+    ],
+    "category_hotspots": [
+        "categoryA",
+        "categoryB"
+    ],
+    "recommendations": [
+        "Actionable recommendation for engineering leadership."
+    ],
+    "anomaly_detection": [
+        "Describe any abnormalities or outlier behaviors."
+    ]
+  }}
+
+  Rules:
+  - All fields must contain LISTS, not paragraphs.
+  - Each list item must be one short sentence or phrase.
+  - Do not include sections, labels, headings, markdown, or commentary.
+  - Only return the JSON object, nothing else.
+
+

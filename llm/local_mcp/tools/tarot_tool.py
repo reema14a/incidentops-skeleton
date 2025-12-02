@@ -147,12 +147,18 @@ TAROT_DECK = [
 
 
 def tarot_draw(arguments: Dict[str, Any], request_id: Optional[Any] = None) -> Dict[str, Any]:
-    """Draw a random tarot card with meaning and risk interpretation.
+    """
+    Draw a tarot card *influenced by incident insights*.
     
     Args:
-        arguments: Tool arguments (empty dict for random draw).
-        request_id: Optional request ID for logging context.
-        
+        arguments: {
+            "insights": {
+                "trend_summary": [...],
+                "risk_trend": [...],
+                "category_hotspots": [...],
+                "anomaly_detection": [...]
+            }
+        }
     Returns:
         dict: {
             "card_name": str,           # e.g., "The Tower"
@@ -162,30 +168,98 @@ def tarot_draw(arguments: Dict[str, Any], request_id: Optional[Any] = None) -> D
         }
     """
     logger.info(
-        f"[request_id={request_id}] [tool=tarot.draw] "
-        f"Drawing tarot card for mystical guidance"
+        f"[request_id={request_id}] [tool=tarot.draw] Tarot request received"
     )
-    
-    try:
-        # Select random card from deck
-        card = random.choice(TAROT_DECK)
-        
-        logger.info(
-            f"[request_id={request_id}] [tool=tarot.draw] [status=success] "
-            f"Drew card: {card['name']} (risk_alignment={card['risk_alignment']})"
-        )
-        
-        return {
-            "card_name": card["name"],
-            "meaning": card["meaning"],
-            "risk_alignment": card["risk_alignment"],
-            "omen_message": card["omen_message"]
-        }
-        
-    except Exception as e:
-        logger.error(
-            f"[request_id={request_id}] [tool=tarot.draw] [status=failure] "
-            f"Unexpected error drawing tarot card: {e}",
-            exc_info=True
-        )
-        raise Exception(f"Failed to draw tarot card: {e}")
+
+    # -----------------------------------------
+    # Extract insights (supports legacy empty {})
+    # -----------------------------------------
+    insights = {}
+    if isinstance(arguments, dict):
+        insights = arguments.get("insights", {}) or {}
+
+    trend_text = " ".join(insights.get("trend_summary", [])).lower()
+    risk_text = " ".join(insights.get("risk_trend", [])).lower()
+    hotspot_list = insights.get("category_hotspots", [])
+    anomaly_text = " ".join(insights.get("anomaly_detection", [])).lower()
+
+    logger.info(
+        f"[request_id={request_id}] [tool=tarot.draw] Insight context extracted: "
+        f"trend='{trend_text[:60]}', risk='{risk_text[:60]}', hotspots={hotspot_list}, anomalies='{anomaly_text[:60]}'"
+    )
+
+    # -----------------------------------------
+    # Determine symbolic risk theme
+    # -----------------------------------------
+    theme = "neutral"
+
+    if any(w in risk_text for w in ["critical", "severe", "high risk", "spiking", "escalat"]):
+        theme = "disruption"
+    elif any(w in trend_text for w in ["increase", "rising", "unstable", "decline"]):
+        theme = "caution"
+    elif any(w in anomaly_text for w in ["unusual", "unexpected", "anomal"]):
+        theme = "transformation"
+    elif any(w in trend_text for w in ["stable", "improved", "recover"]):
+        theme = "stability"
+    else:
+        theme = "opportunity"
+
+    logger.info(
+        f"[request_id={request_id}] [tool=tarot.draw] Derived tarot theme: {theme}"
+    )
+
+    # -----------------------------------------
+    # Map themes → candidate cards
+    # -----------------------------------------
+    theme_cards = {
+        "disruption": ["The Tower", "The Devil", "Death"],
+        "caution": ["The Moon", "The Hanged Man", "The Hermit"],
+        "transformation": ["Judgement", "Wheel of Fortune", "Death"],
+        "stability": ["The Sun", "Strength", "Justice", "Temperance"],
+        "opportunity": ["The Star", "The Magician", "The World", "The Fool"]
+    }
+
+    candidate_names = theme_cards.get(theme, ["Wheel of Fortune"])
+
+    # Find card objects matching candidate names
+    candidates = [c for c in TAROT_DECK if c["name"] in candidate_names]
+
+    # Fallback to random if something unexpected happens
+    if not candidates:
+        candidates = TAROT_DECK
+
+    # -----------------------------------------
+    # Draw one deterministic-themed card
+    # -----------------------------------------
+    card = random.choice(candidates)
+
+    logger.info(
+        f"[request_id={request_id}] [tool=tarot.draw] Selected card={card['name']} (theme={theme})"
+    )
+
+    # -----------------------------------------
+    # Build contextual omen message
+    # -----------------------------------------
+    hotspot_text = ""
+    if hotspot_list:
+        hotspot_text = f" Hotspots detected in: {', '.join(hotspot_list)}."
+
+    anomaly_hint = ""
+    if "anomal" in anomaly_text or "unusual" in anomaly_text:
+        anomaly_hint = " Unusual patterns suggest deeper underlying volatility."
+
+    omen_message = (
+        f"{card['omen_message']} "
+        f"This card aligns with {theme} themes in your incident data."
+        f"{hotspot_text}{anomaly_hint}"
+    )
+
+    # -----------------------------------------
+    # Return same schema as before
+    # -----------------------------------------
+    return {
+        "card_name": card["name"],
+        "meaning": card["meaning"],
+        "risk_alignment": theme,
+        "omen_message": omen_message
+    }

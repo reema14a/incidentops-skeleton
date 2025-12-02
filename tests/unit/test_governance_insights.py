@@ -31,9 +31,9 @@ def test_llm_governance_insights_agent():
     
     # Mock LLM response
     mock_llm_response = json.dumps({
-        'trend_summary': 'System shows increasing incident frequency over the past 10 runs with a shift toward higher severity classifications.',
-        'risk_trend': 'Risk levels have escalated from predominantly low/medium to high/critical in recent runs, indicating deteriorating system stability.',
-        'compliance_trend': 'Compliance issues have increased by 40% compared to historical average, with recurring themes around security patches and access control.',
+        'trend_summary': ['System shows increasing incident frequency over the past 10 runs with a shift toward higher severity classifications.'],
+        'risk_trend': ['Risk levels have escalated from predominantly low/medium to high/critical in recent runs, indicating deteriorating system stability.'],
+        'compliance_trend': ['Compliance issues have increased by 40% compared to historical average, with recurring themes around security patches and access control.'],
         'recurring_issues': [
             'Unauthorized access attempts',
             'Missing security patches',
@@ -50,7 +50,7 @@ def test_llm_governance_insights_agent():
             'Establish configuration management baseline',
             'Increase monitoring frequency for security category'
         ],
-        'anomaly_detection': 'Detected unusual spike in network-related incidents on 2025-11-15, suggesting potential infrastructure issue or attack pattern.'
+        'anomaly_detection': ['Detected unusual spike in network-related incidents on 2025-11-15, suggesting potential infrastructure issue or attack pattern.']
     })
     
     # Mock DB utility functions
@@ -153,16 +153,16 @@ def test_llm_governance_insights_agent():
     print("  ✓ Insights has all required fields")
     
     # Verify trend summary
-    assert isinstance(insights['trend_summary'], str), "Trend summary should be a string"
+    assert isinstance(insights['trend_summary'], list), "Trend summary should be a list"
     assert len(insights['trend_summary']) > 0, "Trend summary should not be empty"
     print(f"  ✓ Trend Summary: {insights['trend_summary'][:80]}...")
     
     # Verify risk trend
-    assert isinstance(insights['risk_trend'], str), "Risk trend should be a string"
+    assert isinstance(insights['risk_trend'], list), "Risk trend should be a list"
     print(f"  ✓ Risk Trend: {insights['risk_trend'][:80]}...")
     
     # Verify compliance trend
-    assert isinstance(insights['compliance_trend'], str), "Compliance trend should be a string"
+    assert isinstance(insights['compliance_trend'], list), "Compliance trend should be a list"
     print(f"  ✓ Compliance Trend: {insights['compliance_trend'][:80]}...")
     
     # Verify recurring issues
@@ -179,7 +179,7 @@ def test_llm_governance_insights_agent():
     print(f"  ✓ Recommendations: {len(insights['recommendations'])} provided")
     
     # Verify anomaly detection
-    assert isinstance(insights['anomaly_detection'], str), "Anomaly detection should be a string"
+    assert isinstance(insights['anomaly_detection'], list), "Anomaly detection should be a list"
     print(f"  ✓ Anomaly Detection: {insights['anomaly_detection'][:80]}...")
     
     # Verify DB functions were called

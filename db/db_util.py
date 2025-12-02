@@ -85,14 +85,22 @@ def _get_db_path() -> str:
         except Exception:
             pass
 
-    # 3) Fallback: local file
-    fallback = os.path.abspath(os.path.join(os.getcwd(), "incidents.db"))
+    # 3) Streamlit-safe fallback: use project root, not cwd
+    try:
+        project_root = Path(__file__).resolve().parent.parent
+        stable_fallback = project_root / "data" / "db" / "incidents.db"
+    except Exception:
+        # ultra-fallback, should never happen
+        stable_fallback = Path(os.getcwd()) / "incidents.db"
+
     logger.warning(
-        "Database path not found in env or settings; falling back to %s. "
-        "Set DB_PATH or configure settings.database.path for tests/production.",
-        fallback,
+        "Database path not found in env or settings; "
+        "falling back to project-root DB: %s",
+        stable_fallback,
     )
-    return fallback
+    return str(stable_fallback)
+
+
 
 
 @contextmanager
@@ -1292,6 +1300,64 @@ def get_compliance_stats() -> dict:
             'avg_issues_per_run': 0.0
         }
 
+def get_resolution_priority_stats() -> dict:
+    """
+    Aggregate resolution priority statistics from audit_summary.audit_data JSON.
+
+    Extracts all `resolution_plans` entries and computes:
+    - priority_counts: number of occurrences per priority value
+    - avg_priority: average priority score (float)
+    - total_plans: number of resolution plans with valid priority
+
+    Returns:
+        {
+            "priority_counts": {1: 5, 2: 8, 3: 2},
+            "avg_priority": 1.87,
+            "total_plans": 15
+        }
+    """
+    try:
+        with get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT audit_data
+                FROM audit_summary
+                WHERE audit_data IS NOT NULL
+            """)
+            rows = cursor.fetchall()
+
+        priority_counts = defaultdict(int)
+        total = 0
+        sum_priority = 0
+
+        for r in rows:
+            try:
+                audit_data = json.loads(r["audit_data"])
+                plans = audit_data.get("resolution_plans", [])
+
+                for p in plans:
+                    priority = p.get("priority")
+                    if isinstance(priority, (int, float)):
+                        priority_counts[int(priority)] += 1
+                        sum_priority += priority
+                        total += 1
+
+            except Exception:
+                continue
+
+        return {
+            "priority_counts": dict(priority_counts),
+            "avg_priority": round(sum_priority / total, 2) if total > 0 else None,
+            "total_plans": total
+        }
+
+    except Exception as e:
+        logger.error(f"Failed to read resolution priority stats: {e}")
+        return {
+            "priority_counts": {},
+            "avg_priority": None,
+            "total_plans": 0
+        }
 
 def get_severity_distribution() -> dict[str, int]:
     """
