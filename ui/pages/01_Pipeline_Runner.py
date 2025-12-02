@@ -246,5 +246,7 @@ if 'pipeline_result' in st.session_state:
 
 # Footer
 st.markdown("---")
-st.caption("💡 Tip: The pipeline processes logs through 7 sequential agents for comprehensive incident management.")
+st.caption("ℹ️ Full historical governance and dashboards are available from the sidebar.")
+
+st.caption("📈 Powered by Kiro:  The pipeline orchestrates agents for comprehensive incident management.")
 

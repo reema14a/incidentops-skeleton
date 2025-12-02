@@ -12,7 +12,7 @@ from utils.prompt_loader import load_prompt
 from db import db_util
 
 
-class GovernanceInsightsAgent(BaseAgent):
+class LLMGovernanceInsightsAgent(BaseAgent):
     """
     GovernanceInsightsAgent analyzes historical governance data from the database
     and provides trend analysis, recurring issue detection, and recommendations.

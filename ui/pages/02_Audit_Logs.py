@@ -107,7 +107,8 @@ def truncate_logs(lines: List[str], max_chars: int = 100000) -> tuple[List[str],
 
 # Page configuration
 st.title("📋 Audit Logs")
-st.markdown("View pipeline execution logs with real-time updates.")
+st.caption("💡 Shows raw pipeline execution logs. For incident insights, check Dashboard or Governance.")
+
 st.markdown("---")
 
 # Controls section
@@ -237,7 +238,7 @@ if log_level_filter:
 st.markdown("---")
 
 # Display logs
-st.subheader(f"📝 Log Viewer ({len(filtered_lines)} lines)")
+st.subheader(f"📝 Log Viewer — Showing  ({len(filtered_lines)} lines after filters)")
 
 if not filtered_lines:
     st.info("No logs match the current filters.")
@@ -257,14 +258,7 @@ else:
             # Display in code block for monospace formatting
             st.code(log_text, language=None)
         
-        # Back to top link
-        st.markdown("""
-        <div style="text-align: center; margin-top: 1rem;">
-            <a href="#audit-logs" style="text-decoration: none; color: #1f77b4;">
-                ⬆️ Back to Top
-            </a>
-        </div>
-        """, unsafe_allow_html=True)
+        
 
 # Download logs
 st.markdown("---")

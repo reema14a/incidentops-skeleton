@@ -32,26 +32,27 @@ Navigate using the sidebar to access:
 - **Audit Logs** - View pipeline execution logs
 - **Dashboards** - Visualize incident metrics and trends
 - **Governance** - Review risk scores and compliance
-- **Notifications** - Monitor notification channels and delivery status *(Coming Soon)*
+- **Notifications** - Configure channels and review delivery history
 
-### Getting Started
+### 💡 Quick Start
 
-1. Use the sidebar to navigate to the **Pipeline Runner**
-2. Enter log data or upload a log file
-3. Click "Run Pipeline" to process incidents
-4. View agent outputs and download results
+1. Go to **Pipeline Runner**
+2. Upload or paste logs
+3. Run pipeline
+4. View Governance, Audit, and Notifications for full system insights
 
 ### About the Pipeline
 
 The system orchestrates intelligent agents in sequence:
 
-1. **MonitorAgent** - Scans logs/metrics for anomalies
-2. **TriageAgent** - Classifies incidents by severity and type
-3. **LLM Alert Summary Agent** - Generates structured summaries
-4. **LLM Resolution Agent** - Suggests remediation actions
-5. **LLM Governance Agent** - Assesses risk and compliance
-6. **NotificationAgent** - Delivers alerts via configured channels
-7. **OpsLogAgent** - Records decisions for traceability
+1. **MonitorAgent** – Scans logs for anomalies  
+2. **TriageAgent** – Classifies incidents by severity and category  
+3. **AlertSummarizerAgent (LLM)** – Generates structured alert summaries  
+4. **ResolutionAgent (LLM)** – Suggests remediation and resolution steps  
+5. **GovernanceInsightsAgent (LLM)** – Identifies deeper risks and compliance signals  
+6. **GovernanceAgent (LLM)** – Produces final risk score, escalation, and compliance assessment  
+7. **NotificationAgent** – Sends alerts through configured notification channels
+
 
 ---
 
@@ -61,3 +62,7 @@ The system orchestrates intelligent agents in sequence:
 # Footer
 st.sidebar.markdown("---")
 st.sidebar.info("IncidentOps v1.0")
+st.caption("IncidentOps v1.0 · Kiro Hackathon Edition")
+
+
+st.caption("✨ Powered by Kiro — End-to-end AI-assisted Incident Intelligence and Governance.")

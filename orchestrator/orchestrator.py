@@ -24,7 +24,7 @@ from agents.triage_agent import TriageAgent
 from agents.llm_resolution_agent import LLMResolutionAgent
 from agents.opslog_agent import OpsLogAgent
 from agents.llm_governance_agent import LLMGovernanceAgent
-from agents.llm_governance_insights_agent import GovernanceInsightsAgent
+from agents.llm_governance_insights_agent import LLMGovernanceInsightsAgent
 from agents.notification_agent import NotificationAgent
 from db import db_util
 
@@ -52,7 +52,7 @@ class PipelineExecutor:
             'llm_resolution': LLMResolutionAgent("LLMResolutionAgent"),
             'opslog': OpsLogAgent("OpsLogAgent"),
             'governance': LLMGovernanceAgent("LLMGovernanceAgent"),
-            'insights': GovernanceInsightsAgent("GovernanceInsightsAgent"),
+            'insights': LLMGovernanceInsightsAgent("GovernanceInsightsAgent"),
             'notification': NotificationAgent("NotificationAgent")
         }
         self.execution_log = []
