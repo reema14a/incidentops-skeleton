@@ -1,176 +1,132 @@
----
+# 🦴 **IncidentOps**
 
-# 🦴 IncidentOps Skeleton
+### **AI-Assisted Incident Detection, Triage & Governance — Built with Kiro’s Spec-Driven Workflow**
 
-### “Bringing Dead Systems Back to Life with AI-Powered Incident Management”
-
-A spec-driven, multi-agent framework for automated **incident detection, triage, and resolution** — built entirely inside **Kiro IDE** using its **vibe coding, hooks, and MCP orchestration** features.
+IncidentOps is a fully functional, multi-agent incident pipeline built for the **Kiro Hackathon**, designed to make recurring issues easier to see in noisy production environments. It uses **Kiro’s spec-driven development**, multi-agent orchestration, and clean iterative workflows to build a complete incident-management system in a fraction of the usual time.
 
 ---
 
-## 🚀 Overview
+## 🚀 **Overview**
 
-Modern DevOps teams drown in alerts and logs. IncidentOps Skeleton revives system observability by orchestrating a set of intelligent agents that detect, classify, and recommend fixes for incidents in real time.
+In real operations, major incidents rarely begin with dramatic failures — they start as *small recurring signals* buried inside logs.
+IncidentOps surfaces these patterns using a sequence of cooperating agents:
 
-Built for the **Kiroween Hackathon 👻** by leveraging **Kiro’s agentic IDE**, structured specs, and reproducible workflows.
+1. **MonitorAgent** – Detects anomalies in raw log entries
+2. **LLMAlertSummaryAgent** – Produces human-friendly summaries
+3. **TriageAgent** – Assigns deterministic severity + category
+4. **LLMResolutionAgent** – Suggests AI-based remediation steps
+5. **OpsLogAgent** – Writes factual audit logs (no interpretation)
+6. **LLMGovernanceAgent** – Performs risk scoring, escalation, compliance
+7. **LLMGovernanceInsightsAgent** – Analyzes recurring historical patterns
+8. **NotificationAgent** – Sends alerts externally (email, push), if enabled
 
----
-
-## 🧩 Architecture
-
-MonitorAgent  →  TriageAgent  →  ResolutionAgent  →  OpsLogAgent
-(logs)            (severity)        (remediation)     (trace)
-
-* **MonitorAgent** – Scans system logs or metrics for anomalies
-* **TriageAgent** – Classifies incidents by severity & type
-* **ResolutionAgent** – Suggests fixes or automation runbooks
-* **OpsLogAgent** – Records every decision for traceability
-
-Each agent is defined declaratively in `specs/agents.yaml` and orchestrated via Kiro hooks.
+All runs are stored in a persistent **SQLite database**, and the system includes a multi-page **Streamlit UI** for interacting with pipeline results.
 
 ---
 
-## ⚙️ Tech Stack
+## 🧩 **Architecture Diagram**
 
-| Layer         | Tool              | Purpose                          |
-| ------------- | ----------------- | -------------------------------- |
-| Language      | Python 3.10+      | Agent logic                      |
-| IDE           | **Kiro**          | Spec-driven, agentic development |
-| Config        | YAML              | Agent + workflow definitions     |
-| Integration   | MCP Hooks         | Log parsing, alert simulation    |
-| UI            | Streamlit         | Optional web interface           |
-| Governance    | JSON logs         | Traceability and explainability  |
+> *Note: Render free-tier services may take 20–40 seconds to cold-start.*
+
+![Architecture](docs/architecture.png)
 
 ---
 
-## 🧠 Kiro Features Demonstrated
+## 🖥️ **How to Use the App**
 
-| Kiro Capability | How Used                                                       |
-| --------------- | -------------------------------------------------------------- |
-| **Vibe Coding** | Generated agent classes & workflow orchestration via Kiro chat |
-| **Specs**       | `specs/agents.yaml` defines agent I/O and descriptions         |
-| **MCP Hooks**   | Connected mock log parser (`metrics_hook.py`) and alert system |
-| **Steering**    | Adjusted agent priorities dynamically during run               |
-| **Governance**  | Every decision logged via OpsLogAgent for audit & replay       |
+1. **Open the deployed Streamlit app**
+   *(Cold start may take 30–60 seconds)*
+2. Go to **Home** to run a complete pipeline using sample logs
+3. Navigate through sidebar pages:
 
-🎥 Demo Video: `demo/vibe-coding.mp4`
-Shows Kiro chat-to-code flow: from YAML spec → generated agent → live execution.
-
----
-
-## 🛡️ AI Governance Practices
-
-IncidentOps Skeleton integrates lightweight governance principles:
-
-* ✅ **Traceability:** Logs every decision with timestamp and agent name
-* ✅ **Reproducibility:** All configs versioned in YAML specs
-* ✅ **Auditability:** Generates `governance_summary.json` after each run
-* ✅ **Explainability:** Each agent returns reasoning strings
-* ✅ **Accountability:** Clear agent ownership for every action
+   * **Pipeline Runner** → see each agent’s output
+   * **Governance Insights** → view recurring patterns across runs
+   * **Database View** → inspect persisted historical incidents
+4. Run the pipeline multiple times — results persist in SQLite
+5. Optionally test NotificationAgent if environment variables are set
 
 ---
 
-## 📦 Setup
+## ⚙️ **Tech Stack**
 
-**Step 1:** Install dependencies
-`pip install -r requirements.txt`
+| Layer         | Tool          | Purpose                                 |
+| ------------- | ------------- | --------------------------------------- |
+| Orchestration | Python        | Agent logic + pipeline execution        |
+| UI            | Streamlit     | Multi-page frontend                     |
+| Storage       | SQLite        | Fully persistent runs + analytics       |
+| AI Reasoning  | LLMs (OpenAI) | Summaries, remediation, insights        |
+| Development   | **Kiro IDE**  | Spec-driven, task-driven build workflow |
 
-**Step 2:** Configure environment variables (optional)
-```bash
-cp .env.example .env
-# Edit .env with your API keys and settings
+---
+
+## 🧠 **Kiro Capabilities Used**
+
+* **Spec-Driven Development**
+  Wrote structured specs → Kiro generated modular agents & flows.
+
+* **Start Task Workflow**
+  Allowed clean, deterministic execution of each specification.
+
+* **Vibe Coding**
+  Used conversational refinement to evolve components iteratively.
+
+* **Hooks & Triggers**
+  Connected governance scoring + insights generation.
+
+* **Steering Documents**
+  Ensured reproducible generation across UI, DB, pipeline, and agents.
+
+---
+
+## 📦 **Local Setup**
+
+### 1. Install dependencies
+
+```
+pip install -r requirements.txt
 ```
 
-**Step 3:** Initialize directories
-The project uses the following directory structure:
-- `data/db/` - Persistent database files (SQLite)
-- `data/samples/` - Sample input logs for testing
-- `data/output/` - Pipeline output dumps
-- `logs/` - Runtime logs (pipeline.log, mcp_server.log) at project root
+### 2. Set environment variables (optional but recommended)
 
-These directories are created automatically on first run.
-
-**Step 4:** Run the pipeline
-
-**Option A: CLI Mode**
-```bash
-python -m ui.console_client
+```
+OPENAI_API_KEY=your_key
+EMAIL_USER=...
+EMAIL_PASSWORD=...
 ```
 
-**Option B: Streamlit UI**
-```bash
+### 3. Run Streamlit UI
+
+```
 streamlit run ui/Home.py
 ```
 
-**Option C: Local MCP Server**
-```bash
-python -m llm.local_mcp.server
+### 4. Directory Structure
+
+Created automatically on first run:
+
 ```
-
-**Sample CLI output:**
-[🦴 MonitorAgent] Detected 3 alerts.
-
-[💀 TriageAgent] Severity: High | Category: Database
-
-[⚡ ResolutionAgent] Suggested: Restart DB service
-
-[🎃 OpsLogAgent] Incident logged successfully.
-
----
-
-## ⚙️ Configuration
-
-IncidentOps uses a centralized configuration system with priority-based resolution:
-
-1. **Environment Variables** (highest priority) - Set in `.env` or system environment
-2. **YAML Configuration** - Defined in `config/settings.yaml`
-3. **Secure Defaults** (lowest priority) - Built-in fallback values
-
-**Key Configuration Files:**
-- `config/settings.yaml` - Runtime settings, paths, log levels
-- `config/prompts.yaml` - LLM prompt templates
-- `.env` - Secrets and environment-specific settings (not committed to git)
-
-**Configuration Policy:**
-All code must access configuration through `config.settings_loader`:
-
-```python
-from config.settings_loader import get_settings
-
-settings = get_settings()
-api_key = settings.get_openai_api_key()
-```
-
-Direct access to environment variables or YAML files is prohibited. See `docs/configuration_enforcement.md` for details.
-
-**Validation:**
-```bash
-# Validate configuration access patterns
-python3 scripts/validate_config_access.py
-
-# Verify data directory structure
-python3 -m scripts.verify_data_structure
+data/db/              # SQLite persistence
+data/sample_logs/     # Input samples
+logs/                 # Agent + pipeline logs
 ```
 
 ---
 
-## 🔮 Future Enhancements
+## 🔮 **Future Enhancements**
 
-* Connect to real metrics (CloudWatch, Prometheus)
-* Add LLM-based summarization of incidents
-* Integrate with Jira / Slack via MCP hooks
-* Extend to FIBO (visual incident storyboards)
+* Plug into real observability sources (CloudWatch, Prometheus)
+* Add AI-based correlation between incidents
+* Extend governance scoring with risk thresholds
+* Integrate outgoing notifications (Slack, PagerDuty, Jira)
 
 ---
 
-## 🧙 Author
+## 👤 **Author**
 
 **Reema Raghava**
+AI + BI + Ops Systems Architect
 
-*AI + BI + Ops Systems Architect*
+🔗 LinkedIn: [https://www.linkedin.com/in/reema-raghava-28737a11/](https://www.linkedin.com/in/reema-raghava-28737a11/)
+🔗 GitHub: [https://github.com/reema14a](https://github.com/reema14a)
 
-LinkedIn: https://www.linkedin.com/in/reema-raghava-28737a11/
-
-GitHub: https://github.com/reema14a
 ---
-

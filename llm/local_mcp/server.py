@@ -292,7 +292,7 @@ def health_check() -> Any:
     }), 200
 
 
-def run_server(host: str = '127.0.0.1', port: int = 5005, debug: bool = False) -> None:
+def run_server(host: str = '0.0.0.0', port: int = None, debug: bool = False):
     """Run the local MCP server.
     
     Args:
@@ -300,11 +300,10 @@ def run_server(host: str = '127.0.0.1', port: int = 5005, debug: bool = False) -
         port: Port number to listen on.
         debug: Enable Flask debug mode.
     """
+    if port is None:
+        port = int(os.environ.get("PORT", 5005))
+
     logger.info(f"Starting Local MCP Server on http://{host}:{port}")
-    logger.info("Available endpoints:")
-    logger.info(f"  POST http://{host}:{port}/send - JSON-RPC 2.0 tool calls")
-    logger.info(f"  GET  http://{host}:{port}/health - Health check")
-    
     app.run(host=host, port=port, debug=debug)
 
 
