@@ -163,9 +163,9 @@ Pipeline order:
 - [ ] Add caching (@st.cache_data) for heavy DB reads to improve UI responsiveness.
 
 ## Testing Tasks
-- [ ] Review and update existing tests for all agents, ensuring mocks are correct, outdated expectations are fixed, and failing tests are resolved.
+- [x] Review and update existing tests for all agents, ensuring mocks are correct, outdated expectations are fixed, and failing tests are resolved.
 - [ ] Run full integration test suite with coverage, identify gaps, and ensure all pipeline paths are fully tested.
-- [ ] Generate a consolidated verification report summarizing fixes, remaining issues, coverage results, and recommendations.
+- [x] Generate a consolidated verification report summarizing fixes, remaining issues, coverage results, and recommendations.
 
 
 # Acceptance Criteria
