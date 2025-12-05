@@ -11,6 +11,10 @@ import json
 from pathlib import Path
 from typing import List, Dict, Any
 
+# Apply global theme
+from ui.theme_loader import apply_global_theme, close_sidebar_wrapper
+apply_global_theme()
+
 # Add project root to Python path
 ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
@@ -441,3 +445,6 @@ try:
 except:
     # During testing or import, don't render
     pass
+
+# Close sidebar wrapper
+close_sidebar_wrapper()

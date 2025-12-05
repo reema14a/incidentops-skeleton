@@ -7,6 +7,10 @@ Run with: streamlit run ui/Home.py
 
 import streamlit as st
 
+# Apply global theme
+from ui.theme_loader import apply_global_theme, close_sidebar_wrapper
+apply_global_theme()
+
 # Page configuration
 st.set_page_config(
     page_title="IncidentOps",
@@ -49,7 +53,8 @@ The system orchestrates intelligent agents in sequence:
 2. **TriageAgent** – Classifies incidents by severity and category  
 3. **AlertSummarizerAgent (LLM)** – Generates structured alert summaries  
 4. **ResolutionAgent (LLM)** – Suggests remediation and resolution steps  
-5. **GovernanceInsightsAgent (LLM)** – Identifies deeper risks and compliance signals  
+5. **LLMGovernanceInsightsAgent
+ (LLM)** – Identifies deeper risks and compliance signals  
 6. **GovernanceAgent (LLM)** – Produces final risk score, escalation, and compliance assessment  
 7. **NotificationAgent** – Sends alerts through configured notification channels
 
@@ -66,3 +71,6 @@ st.caption("IncidentOps v1.0 · Kiro Hackathon Edition")
 
 
 st.caption("✨ Powered by Kiro — End-to-end AI-assisted Incident Intelligence and Governance.")
+
+# Close sidebar wrapper
+close_sidebar_wrapper()

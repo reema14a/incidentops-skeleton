@@ -1,7 +1,8 @@
 """
 Incident Intelligence Page
 
-LLM-powered deep insights from GovernanceInsightsAgent:
+LLM-powered deep insights from LLMGovernanceInsightsAgent
+:
 - Trend summary
 - Tarot interpretation
 - Patterns (recurring issues, category hotspots)
@@ -17,9 +18,14 @@ from pathlib import Path
 from typing import Dict, Any, Optional
 # from datetime import datetime
 
+# Apply global theme
+from ui.theme_loader import apply_global_theme, close_sidebar_wrapper
+apply_global_theme()
+
 from utils.formatters import format_timestamp
 from utils.insights_loader import get_latest_insights
 from utils.insights_normalizer import normalize_insights
+from ui.components.tarot_preview import render_tarot_card
 
 # Import database utilities
 from db import db_util
@@ -79,6 +85,37 @@ def get_compliance_trend():
 def render_list(items):
     for item in items:
         st.markdown(f"- {item}")
+
+def resolve_tarot_image(card_name: str) -> Optional[Path]:
+    """
+    Resolve tarot card image path from card name.
+    
+    Converts card name to lowercase, replaces spaces with underscores,
+    and searches for .png or .jpeg files in ui/assets.
+    
+    Args:
+        card_name: Name of the tarot card (e.g., "The Tower")
+        
+    Returns:
+        Path to image file if found, None otherwise
+    """
+    if not card_name:
+        return None
+    
+    # Convert to lowercase
+    filename_lower = card_name.lower()
+    
+    # Try both .png and .jpeg extensions
+    assets_dir = Path(__file__).parent.parent / "assets"
+    
+    # Try with underscores first (preferred convention)
+    filename_underscore = filename_lower.replace(" ", "_")
+    for ext in [".png", ".jpeg"]:
+        image_path = assets_dir / f"{filename_underscore}{ext}"
+        if image_path.exists():
+            return image_path
+
+    return None
 
 # ---------------------------------------------
 # Render Page
@@ -147,87 +184,110 @@ def render_page():
         st.subheader("🔮 Tarot Interpretation")
         shadow_risk = insights.get("shadow_risk_interpretation")
 
-        if shadow_risk:
-            # Your existing tarot CSS & layout (unchanged)
-            st.markdown("""
-            <style>
-            .tarot-panel {
-                background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-                border: 2px solid #9d4edd;
-                border-radius: 12px;
-                padding: 24px;
-                margin: 16px 0;
-                box-shadow: 0 4px 6px rgba(157, 78, 221, 0.3);
-            }
-            .tarot-card-name {
-                font-size: 24px;
-                font-weight: bold;
-                color: #ffd700;
-                text-align: center;
-                margin-bottom: 12px;
-            }
-            .tarot-meaning {
-                color: #e0e0e0;
-                font-size: 14px;
-                line-height: 1.5;
-                margin-bottom: 8px;
-            }
-            .tarot-omen {
-                color: #9d4edd;
-                font-size: 14px;
-                font-style: italic;
-                padding: 10px;
-                background: rgba(157, 78, 221, 0.1);
-                border-left: 3px solid #9d4edd;
-                border-radius: 4px;
-                margin-top: 12px;
-            }
-            </style>
-            """, unsafe_allow_html=True)
+        # if shadow_risk:
+            # # Your existing tarot CSS & layout (unchanged)
+            # st.markdown("""
+            #     <style>
+            #     .tarot-panel {
+            #         background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            #         border: 2px solid #9d4edd;
+            #         border-radius: 12px;
+            #         padding: 0 24px 24px 24px;  /* FIX: remove top padding */
+            #         margin: 16px 0;
+            #         box-shadow: 0 4px 6px rgba(157, 78, 221, 0.3);
+            #     }
+            #     .tarot-card-name {
+            #         font-size: 24px;
+            #         font-weight: bold;
+            #         color: #ffd700;
+            #         text-align: center;
+            #         margin: 16px 0;   /* add spacing since we removed padding */
+            #     }
+            #     .tarot-meaning {
+            #         color: #e0e0e0;
+            #         font-size: 14px;
+            #         line-height: 1.5;
+            #         margin-bottom: 8px;
+            #     }
+            #     .tarot-omen {
+            #         color: #9d4edd;
+            #         font-size: 14px;
+            #         font-style: italic;
+            #         padding: 10px;
+            #         background: rgba(157, 78, 221, 0.1);
+            #         border-left: 3px solid #9d4edd;
+            #         border-radius: 4px;
+            #         margin-top: 12px;
+            #     }
+            #     </style>
+            #     """, unsafe_allow_html=True)
 
-            st.markdown('<div class="tarot-panel">', unsafe_allow_html=True)
-            st.markdown(
-                f'<div class="tarot-card-name">✨ {shadow_risk.get("card_name", "Unknown Card")} ✨</div>',
-                unsafe_allow_html=True
-            )
-            st.markdown(
-                f'<div class="tarot-meaning"><strong>Meaning:</strong> {shadow_risk.get("meaning")}</div>',
-                unsafe_allow_html=True
-            )
 
-            # Risk alignment badge
-            risk_alignment = shadow_risk.get("risk_alignment", "unknown")
-            colors = {
-                "stability": "#4caf50",
-                "disruption": "#f44336",
-                "transformation": "#9c27b0",
-                "caution": "#ff9800",
-                "opportunity": "#2196f3"
-            }
-            badge = colors.get(risk_alignment.lower(), "#808080")
+            # # st.markdown('<div class="tarot-panel">', unsafe_allow_html=True)
+            
+            
+            # # Display tarot card image
+            # card_name = shadow_risk.get("card_name", "")
+            # image_path = resolve_tarot_image(card_name)
+            
+            # if image_path:
+            #     st.image(str(image_path), use_container_width=True)
+            # else:
+            #     # Placeholder for missing image
+            #     st.markdown(
+            #         f'<div class="tarot-card-name">✨ {shadow_risk.get("card_name", "Unknown Card")} ✨</div>',
+            #         unsafe_allow_html=True
+            #     )
+            #     st.markdown(
+            #         """
+            #         <div style='text-align:center;padding:40px;background:rgba(157,78,221,0.1);
+            #         border-radius:8px;color:#9d4edd;'>
+            #             🌙 Card Image Not Available 🌙
+            #         </div>
+            #         """,
+            #         unsafe_allow_html=True
+            #     )
+            
+            # st.markdown(
+            #     f'<div class="tarot-meaning"><strong>Meaning:</strong> {shadow_risk.get("meaning")}</div>',
+            #     unsafe_allow_html=True
+            # )
 
-            st.markdown(
-                f"""
-                <div style='text-align:center;margin-top:12px;'>
-                    <span style="
-                        background:{badge};color:white;padding:6px 14px;
-                        border-radius:20px;font-weight:bold;">
-                        {risk_alignment}
-                    </span>
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
+            # # Risk alignment badge
+            # risk_alignment = shadow_risk.get("risk_alignment", "unknown")
+            # colors = {
+            #     "stability": "#4caf50",
+            #     "disruption": "#f44336",
+            #     "transformation": "#9c27b0",
+            #     "caution": "#ff9800",
+            #     "opportunity": "#2196f3"
+            # }
+            # badge = colors.get(risk_alignment.lower(), "#808080")
 
-            st.markdown(
-                f'<div class="tarot-omen"><strong>Omen:</strong> {shadow_risk.get("omen_message")}</div>',
-                unsafe_allow_html=True,
-            )
+            # st.markdown(
+            #     f"""
+            #     <div style='text-align:center;margin-top:12px;'>
+            #         <span style="
+            #             background:{badge};color:white;padding:6px 14px;
+            #             border-radius:20px;font-weight:bold;">
+            #             {risk_alignment}
+            #         </span>
+            #     </div>
+            #     """,
+            #     unsafe_allow_html=True,
+            # )
 
-            st.markdown("</div>", unsafe_allow_html=True)
+            # st.markdown(
+            #     f'<div class="tarot-omen"><strong>Omen:</strong> {shadow_risk.get("omen_message")}</div>',
+            #     unsafe_allow_html=True,
+            # )
 
-        else:
-            st.info("No tarot reading available.")
+            # st.markdown("</div>", unsafe_allow_html=True)
+
+        render_tarot_card(shadow_risk)
+
+        # else:
+        #     st.info("No tarot reading available.")
 
     st.markdown("---")
 
@@ -313,3 +373,6 @@ def render_page():
 # ---------------------------------------------
 if __name__ == "__main__":
     render_page()
+
+# Close sidebar wrapper
+close_sidebar_wrapper()

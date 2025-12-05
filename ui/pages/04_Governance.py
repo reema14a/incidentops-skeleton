@@ -16,6 +16,10 @@ from pathlib import Path
 from typing import Dict, Any
 from datetime import datetime
 
+# Apply global theme
+from ui.theme_loader import apply_global_theme, close_sidebar_wrapper
+apply_global_theme()
+
 from utils.formatters import format_timestamp
 
 # Add project root to Python path
@@ -320,3 +324,6 @@ def render_page():
 # Run
 if __name__ == "__main__":
     render_page()
+
+# Close sidebar wrapper
+close_sidebar_wrapper()

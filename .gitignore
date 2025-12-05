@@ -20,3 +20,27 @@ data/db/*.db*
 # Streamlit
 .streamlit/
 CurrentPlan.md
+ui/data/db/incidents.db
+ui/components/unused/alerts_preview.py
+ui/components/unused/Dashboards.py
+ui/components/unused/Deep_Governance_Insights.py
+ui/components/unused/governance_preview.py
+ui/components/unused/governance_summary.py
+ui/components/unused/insights_preview.py
+ui/components/unused/insights_snapshot.py
+ui/components/unused/kpi_cards.py
+ui/components/unused/latest_alerts.py
+ui/components/unused/notifications_preview.py
+ui/components/unused/quick_actions.py
+ui/components/unused/alerts_preview.py
+ui/components/unused/Dashboards.py
+ui/components/unused/Deep_Governance_Insights.py
+ui/components/unused/governance_preview.py
+ui/components/unused/governance_summary.py
+ui/components/unused/insights_preview.py
+ui/components/unused/insights_snapshot.py
+ui/components/unused/kpi_cards.py
+ui/components/unused/latest_alerts.py
+ui/components/unused/notifications_preview.py
+ui/components/unused/quick_actions.py
+ui/pages.zip

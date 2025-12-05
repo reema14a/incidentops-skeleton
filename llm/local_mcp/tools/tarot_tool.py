@@ -212,12 +212,28 @@ def tarot_draw(arguments: Dict[str, Any], request_id: Optional[Any] = None) -> D
     # Map themes → candidate cards
     # -----------------------------------------
     theme_cards = {
-        "disruption": ["The Tower", "The Devil", "Death"],
-        "caution": ["The Moon", "The Hanged Man", "The Hermit"],
-        "transformation": ["Judgement", "Wheel of Fortune", "Death"],
-        "stability": ["The Sun", "Strength", "Justice", "Temperance"],
-        "opportunity": ["The Star", "The Magician", "The World", "The Fool"]
+        "disruption": [
+            "The Tower", "The Devil", "Death", "The Chariot"
+        ],
+        "caution": [
+            "The Moon", "The Hanged Man", "The Hermit",
+            "The High Priestess"
+        ],
+        "transformation": [
+            "Judgement", "Wheel of Fortune", "Temperance",
+            "The Emperor"
+        ],
+        "stability": [
+            "The Sun", "Strength", "Justice", "The Hierophant",
+            "The Empress"
+        ],
+        "opportunity": [
+            "The Star", "The Magician", "The World", "The Fool",
+            "The Lovers"
+        ]
     }
+
+
 
     candidate_names = theme_cards.get(theme, ["Wheel of Fortune"])
 

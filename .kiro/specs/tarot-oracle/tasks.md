@@ -39,7 +39,8 @@
   - Update `tests/local_mcp_server/test_router.py`
   - _Requirements: 1.5, 4.3_
 
-- [x] 3. Enhance GovernanceInsightsAgent
+- [x] 3. Enhance LLMGovernanceInsightsAgent
+
   - Import and initialize MCP client in `agents/llm_governance_insights_agent.py`
   - Add `_draw_tarot_card()` method to invoke tarot.draw through MCP
   - Modify `run()` method to call `_draw_tarot_card()` before LLM insights generation
@@ -78,8 +79,8 @@
   - Update `tests/unit/test_insert_insights_history.py` and `tests/unit/test_get_insights_history.py`
   - _Requirements: 2.4_
 
-- [x] 5. Update Deep Governance Insights page
-  - Modify `ui/pages/Deep_Governance_Insights.py` to display tarot card data
+- [x] 5. Update Incident Intelligence page
+  - Modify `ui/pages/Incident_Intelligence.py` to display tarot card data
   - Add "🔮 Tarot Interpretation" panel after existing insights sections
   - Show card name, meaning, risk alignment badge, and omen message
   - Apply mystical styling to tarot panel (colors: #9d4edd, #ffd700)
@@ -87,7 +88,7 @@
   - Ensure existing page layout and functionality remain intact
   - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5_
 
-- [ ]* 5.1 Write integration tests for Deep Governance Insights enhancement
+- [ ]* 5.1 Write integration tests for Incident Intelligence enhancement
   - Test tarot panel displays when data present
   - Test card display with valid data
   - Test graceful handling when tarot data is None
@@ -95,14 +96,23 @@
   - Update `tests/integration/test_deep_governance_insights_tarot.py`
   - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5_
 
+- [x] 5.2 Render tarot card image in Incident Intelligence page
+  - Convert `card_name` to lowercase
+  - Replace spaces with underscores
+  - Resolve image from `ui/assets` with `.png` or `.jpeg`
+  - Display the first matching file
+  - Handle missing image gracefully with a placeholder
+  - _Requirements: 3.2, 3.3_
+
 - [x] 6. Checkpoint - Ensure all tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
 - [x] 7. End-to-end integration testing
   - Test full MCP client to tarot server flow
-  - Test GovernanceInsightsAgent with tarot integration
+  - Test LLMGovernanceInsightsAgent
+ with tarot integration
   - Test database persistence and retrieval
-  - Test UI displays tarot data correctly in Deep Governance Insights page
+  - Test UI displays tarot data correctly in Incident Intelligence page
   - Verify backward compatibility with existing tests
   - Create `tests/e2e/test_tarot_oracle_e2e.py`
   - _Requirements: 4.2, 4.5_

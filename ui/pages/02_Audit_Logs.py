@@ -10,6 +10,10 @@ import time
 from pathlib import Path
 from typing import List, Optional
 
+# Apply global theme
+from ui.theme_loader import apply_global_theme, close_sidebar_wrapper
+apply_global_theme()
+
 
 def get_log_file_path() -> Path:
     """
@@ -285,3 +289,6 @@ if auto_refresh:
 # Footer
 st.markdown("---")
 st.caption("🔄 Logs are read from `logs/pipeline.log` at the project root.")
+
+# Close sidebar wrapper
+close_sidebar_wrapper()

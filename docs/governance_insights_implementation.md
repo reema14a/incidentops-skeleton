@@ -1,14 +1,17 @@
-# GovernanceInsightsAgent Implementation
+# LLMGovernanceInsightsAgent
+ Implementation
 
 ## Overview
 
-The GovernanceInsightsAgent is a new LLM-based agent that analyzes historical governance data to provide trend analysis, recurring issue detection, and actionable recommendations for engineering leadership.
+The LLMGovernanceInsightsAgent
+ is a new LLM-based agent that analyzes historical governance data to provide trend analysis, recurring issue detection, and actionable recommendations for engineering leadership.
 
 ## Implementation Details
 
 ### Agent Location
 - **File**: `agents/llm_governance_insights_agent.py`
-- **Class**: `GovernanceInsightsAgent`
+- **Class**: `LLMGovernanceInsightsAgent
+`
 - **Base Class**: `BaseAgent`
 
 ### Pipeline Position
@@ -20,7 +23,8 @@ The agent is positioned as Stage 7 in the pipeline, between LLMGovernanceAgent a
 4. LLMResolutionAgent
 5. OpsLogAgent
 6. LLMGovernanceAgent
-7. **GovernanceInsightsAgent** ← NEW
+7. **LLMGovernanceInsightsAgent
+** ← NEW
 8. NotificationAgent
 
 ### Key Features
@@ -74,7 +78,8 @@ CREATE TABLE insights_history (
 - `orchestrator/orchestrator.py`
 
 #### Changes Made
-1. Added `GovernanceInsightsAgent` import
+1. Added `LLMGovernanceInsightsAgent
+` import
 2. Added agent to `self.agents` dictionary
 3. Added `insights_history` to `db_write_status` tracking
 4. Added `_validate_insights_output()` validation method

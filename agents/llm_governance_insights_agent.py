@@ -1,5 +1,6 @@
 """
-GovernanceInsightsAgent uses an LLM to analyze historical governance data.
+LLMGovernanceInsightsAgent
+ uses an LLM to analyze historical governance data.
 This agent sits after LLMGovernanceAgent and provides trend analysis and recommendations.
 """
 import json
@@ -14,7 +15,8 @@ from db import db_util
 
 class LLMGovernanceInsightsAgent(BaseAgent):
     """
-    GovernanceInsightsAgent analyzes historical governance data from the database
+    LLMGovernanceInsightsAgent
+ analyzes historical governance data from the database
     and provides trend analysis, recurring issue detection, and recommendations.
     
     This agent:
@@ -23,7 +25,7 @@ class LLMGovernanceInsightsAgent(BaseAgent):
     - Returns structured insights for UI display and decision support
     """
     
-    def __init__(self, name: str = "GovernanceInsightsAgent", model: str = "gpt-4o-mini"):
+    def __init__(self, name: str = "LLMGovernanceInsightsAgent", model: str = "gpt-4o-mini"):
         """
         Initialize the Governance Insights Agent.
         

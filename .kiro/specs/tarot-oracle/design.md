@@ -5,8 +5,9 @@
 The Tarot Oracle system integrates mystical symbolic guidance into the IncidentOps governance framework through two main components:
 
 1. **MCP Tarot Server Tool** - A custom MCP tool (`tarot.draw`) that returns randomly selected tarot cards with meanings, risk alignments, and omen messages
-2. **GovernanceInsightsAgent Integration** - Extends the existing agent to invoke tarot readings and include them as "Shadow Risk Interpretations" in insights output
-3. **Deep Governance Insights UI Enhancement** - Adds a Tarot Interpretation panel to the existing Deep Governance Insights page to display tarot readings alongside trend charts
+2. **LLMGovernanceInsightsAgent
+ Integration** - Extends the existing agent to invoke tarot readings and include them as "Shadow Risk Interpretations" in insights output
+3. **Incident Intelligence UI Enhancement** - Adds a Tarot Interpretation panel to the existing Incident Intelligence page to display tarot readings alongside trend charts
 
 The design follows existing IncidentOps patterns for MCP tools, agent architecture, and Streamlit UI components to ensure seamless integration with minimal code changes.
 
@@ -20,7 +21,8 @@ The design follows existing IncidentOps patterns for MCP tools, agent architectu
 ├─────────────────────────────────────────────────────────────┤
 │                                                               │
 │  ┌──────────────────┐      ┌──────────────────────────┐    │
-│  │  MCP Tarot Tool  │◄─────┤  GovernanceInsightsAgent │    │
+│  │  MCP Tarot Tool  │◄─────┤  LLMGovernanceInsightsAgent
+ │    │
 │  │  (tarot.draw)    │      │  (Enhanced)              │    │
 │  └────────┬─────────┘      └──────────┬───────────────┘    │
 │           │                            │                     │
@@ -38,13 +40,14 @@ The design follows existing IncidentOps patterns for MCP tools, agent architectu
 ### Data Flow
 
 1. **Governance Integration Flow**:
-   - GovernanceInsightsAgent runs during pipeline execution
+   - LLMGovernanceInsightsAgent
+ runs during pipeline execution
    - Agent invokes `tarot.draw` through MCP client
    - MCP router routes to tarot tool implementation
    - Tarot tool returns card data (name, meaning, risk_alignment, omen_message)
    - Tarot card data is included in insights output as "Shadow Risk Interpretation"
    - Card data is persisted to database with insights record
-   - Deep Governance Insights page displays tarot reading in dedicated panel alongside technical analysis
+   - Incident Intelligence page displays tarot reading in dedicated panel alongside technical analysis
 
 ## Components and Interfaces
 
@@ -102,7 +105,8 @@ if tool_name == 'tarot.draw':
     return tarot_draw(arguments, request_id)
 ```
 
-### 3. GovernanceInsightsAgent Enhancement (`agents/llm_governance_insights_agent.py`)
+### 3. LLMGovernanceInsightsAgent
+ Enhancement (`agents/llm_governance_insights_agent.py`)
 
 **Changes Required**:
 - Add MCP client import and initialization
@@ -141,7 +145,7 @@ if tool_name == 'tarot.draw':
 - Set `shadow_risk_interpretation` to `None` on failure
 - Ensure agent never fails due to tarot integration
 
-### 4. Deep Governance Insights Page Enhancement (`ui/pages/Deep_Governance_Insights.py`)
+### 4. Incident Intelligence Page Enhancement (`ui/pages/Deep_Governance_Insights.py`)
 
 **Purpose**: Display tarot interpretations alongside existing governance insights and trend charts.
 
@@ -279,7 +283,8 @@ ADD COLUMN tarot_card TEXT;  -- JSON string containing card data
 }
 ```
 
-### GovernanceInsightsAgent Error Handling
+### LLMGovernanceInsightsAgent
+ Error Handling
 
 **Scenarios**:
 1. **MCP client unavailable**: Log warning, set `shadow_risk_interpretation` to `None`, continue with insights generation
@@ -292,7 +297,7 @@ ADD COLUMN tarot_card TEXT;  -- JSON string containing card data
 - All existing functionality must work even if tarot is unavailable
 - Warnings logged but not raised as exceptions
 
-### Deep Governance Insights Page Error Handling
+### Incident Intelligence Page Error Handling
 
 **Scenarios**:
 1. **No tarot data available**: Display message: "No tarot reading available for this insight"
@@ -315,7 +320,8 @@ ADD COLUMN tarot_card TEXT;  -- JSON string containing card data
 - Test request_id logging
 - Test error handling for edge cases
 
-**GovernanceInsightsAgent Tests** (`tests/unit/test_governance_insights.py` - enhanced):
+**LLMGovernanceInsightsAgent
+ Tests** (`tests/unit/test_governance_insights.py` - enhanced):
 - Mock MCP client to return tarot card data
 - Verify shadow_risk_interpretation included in output
 - Test graceful degradation when MCP fails
@@ -333,7 +339,8 @@ ADD COLUMN tarot_card TEXT;  -- JSON string containing card data
 - Verify JSON-RPC 2.0 compliance
 - Test error scenarios (server down, timeout)
 
-**GovernanceInsightsAgent with Tarot** (`tests/integration/test_governance_insights_tarot.py`):
+**LLMGovernanceInsightsAgent
+ with Tarot** (`tests/integration/test_governance_insights_tarot.py`):
 - Test full insights generation with tarot integration
 - Verify database persistence of tarot data
 - Test retrieval of insights with tarot from database
@@ -387,6 +394,22 @@ ADD COLUMN tarot_card TEXT;  -- JSON string containing card data
 20. The Sun - success, vitality - opportunity
 21. Judgement - reflection, reckoning - transformation
 22. The World - completion, accomplishment - opportunity
+
+### Tarot Card Image Filename Convention
+
+Tarot card images are stored in `ui/assets/` and must follow a filename
+derived from the `card_name` returned by the `tarot.draw` tool.
+
+Filename derivation:
+
+- Convert the card name to lowercase.
+- Replace spaces with underscores.
+- Resolve the file using `.png` or `.jpeg`.
+- Use the first matching file found.
+- Missing images must be handled gracefully by the UI.
+
+Example:
+"The Tower" → `ui/assets/the_tower.png` or `ui/assets/the_tower.jpeg`
 
 ### Styling Constants
 
@@ -462,7 +485,8 @@ ADD COLUMN tarot_card TEXT DEFAULT NULL;
 ## Backward Compatibility
 
 **Guaranteed Compatibility**:
-- Existing agents unchanged (except GovernanceInsightsAgent enhancement)
+- Existing agents unchanged (except LLMGovernanceInsightsAgent
+ enhancement)
 - Existing MCP tools continue working
 - Existing database schema compatible (new column is nullable)
 - Existing UI pages unaffected
@@ -471,7 +495,8 @@ ADD COLUMN tarot_card TEXT DEFAULT NULL;
 **Migration Path**:
 - Deploy MCP tarot tool first
 - Update router to register new tool
-- Enhance GovernanceInsightsAgent with optional tarot integration
+- Enhance LLMGovernanceInsightsAgent
+ with optional tarot integration
 - Add database column (nullable)
 - Deploy Tarot Oracle UI page
 - No downtime required

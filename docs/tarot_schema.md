@@ -61,15 +61,18 @@ If the tarot tool encounters an error, it raises an exception:
 raise Exception(f"Failed to draw tarot card: {error_message}")
 ```
 
-The calling agent (GovernanceInsightsAgent) is responsible for handling this exception gracefully.
+The calling agent (LLMGovernanceInsightsAgent
+) is responsible for handling this exception gracefully.
 
 ## Integration Points
 
-### 1. GovernanceInsightsAgent
+### 1. LLMGovernanceInsightsAgent
+
 
 **Status**: ⚠️ NOT YET IMPLEMENTED
 
-The GovernanceInsightsAgent should invoke the tarot tool and include the card data in its output:
+The LLMGovernanceInsightsAgent
+ should invoke the tarot tool and include the card data in its output:
 
 ```python
 # Expected integration (not yet implemented)
@@ -105,7 +108,7 @@ ALTER TABLE insights_history
 ADD COLUMN tarot_card TEXT;  -- JSON string containing card data
 ```
 
-### 3. Deep Governance Insights UI
+### 3. Incident Intelligence UI
 
 **Status**: ⚠️ NOT YET IMPLEMENTED
 

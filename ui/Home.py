@@ -21,6 +21,10 @@ project_root = Path(__file__).resolve().parent.parent
 if str(project_root) not in sys.path:
     sys.path.insert(0, str(project_root))
 
+# Apply global theme
+from ui.theme_loader import apply_global_theme, close_sidebar_wrapper
+apply_global_theme()
+
 # DB utilities
 from db.db_util import (
     get_dashboard_metrics,
@@ -336,3 +340,6 @@ st.markdown("---")
 
 st.caption("💡 Tip: Dashboard summarizes system-wide historical behavior. For per-run compliance & decisions, see Governance. For LLM insights, see Incident Intelligence.")
 st.caption("✨ Powered by Kiro: End-to-end AI-assisted Incident Intelligence and Governance.")
+
+# Close sidebar wrapper
+close_sidebar_wrapper()

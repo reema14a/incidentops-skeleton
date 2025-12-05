@@ -2,16 +2,17 @@
 
 ## Introduction
 
-The Tarot Oracle system integrates mystical guidance into the IncidentOps governance framework. By exposing tarot card readings through a custom MCP server, the system provides "Shadow Risk Interpretations" that complement traditional governance insights with symbolic wisdom. The feature integrates directly into the existing Deep Governance Insights page, adding a Tarot Interpretation panel alongside existing trend charts and analysis.
+The Tarot Oracle system integrates mystical guidance into the IncidentOps governance framework. By exposing tarot card readings through a custom MCP server, the system provides "Shadow Risk Interpretations" that complement traditional governance insights with symbolic wisdom. The feature integrates directly into the existing Incident Intelligence page, adding a Tarot Interpretation panel alongside existing trend charts and analysis.
 
 ## Glossary
 
 - **Tarot Oracle System**: The complete feature including MCP server, agent integration, and UI components
 - **MCP Tarot Server**: A custom Model Context Protocol server that exposes tarot card drawing functionality
 - **Shadow Risk Interpretation**: A tarot-based symbolic interpretation included in governance insights
-- **GovernanceInsightsAgent**: The existing LLM agent responsible for generating governance analysis
+- **LLMGovernanceInsightsAgent
+**: The existing LLM agent responsible for generating governance analysis
 - **Tarot Card**: A symbolic card with associated meanings, risk alignments, and omen messages
-- **Tarot Interpretation Panel**: A UI component on the Deep Governance Insights page displaying tarot readings
+- **Tarot Interpretation Panel**: A UI component on the Incident Intelligence page displaying tarot readings
 
 ## Requirements
 
@@ -33,19 +34,21 @@ The Tarot Oracle system integrates mystical guidance into the IncidentOps govern
 
 #### Acceptance Criteria
 
-1. WHEN the GovernanceInsightsAgent generates insights THEN the system SHALL invoke the tarot.draw tool through the MCP client
+1. WHEN the LLMGovernanceInsightsAgent
+ generates insights THEN the system SHALL invoke the tarot.draw tool through the MCP client
 2. WHEN a tarot card is drawn during insights generation THEN the system SHALL include it as a "Shadow Risk Interpretation" section in the output
-3. WHEN the MCP Tarot Server is unavailable THEN the GovernanceInsightsAgent SHALL continue functioning and log a warning without failing
+3. WHEN the MCP Tarot Server is unavailable THEN the LLMGovernanceInsightsAgent
+ SHALL continue functioning and log a warning without failing
 4. WHEN storing insights to the database THEN the system SHALL persist the tarot card data (name, meaning, risk_alignment, omen_message) in the insights record
 5. WHEN the tarot integration fails THEN the system SHALL gracefully degrade and provide insights without the tarot component
 
 ### Requirement 3
 
-**User Story:** As a user, I want to see tarot interpretations on the Deep Governance Insights page, so that I can view symbolic guidance alongside technical analysis.
+**User Story:** As a user, I want to see tarot interpretations on the Incident Intelligence page, so that I can view symbolic guidance alongside technical analysis.
 
 #### Acceptance Criteria
 
-1. WHEN a user views the Deep Governance Insights page THEN the system SHALL display a "Tarot Interpretation" panel with mystical styling
+1. WHEN a user views the Incident Intelligence page THEN the system SHALL display a "Tarot Interpretation" panel with mystical styling
 2. WHEN insights include tarot card data THEN the system SHALL display the card name, meaning, risk alignment, and omen message in the panel
 3. WHEN displaying a tarot card THEN the system SHALL use atmospheric visual styling including mystical colors and appropriate typography
 4. WHEN no tarot data is available THEN the system SHALL display a message indicating "No tarot reading available for this insight"

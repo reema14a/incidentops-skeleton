@@ -16,7 +16,7 @@ This spec introduces a lightweight persistent storage layer using SQLite to repl
 * Governance analysis results
 * Compliance issues
 * Notification events
-* GovernanceInsightsAgent outputs for historical UI display
+* LLMGovernanceInsightsAgent outputs for historical UI display
 
 The SQLite file will be located at data/db/incidents.db inside the project container.
 

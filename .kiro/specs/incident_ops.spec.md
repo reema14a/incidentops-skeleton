@@ -16,7 +16,7 @@ Pipeline order:
 4. LLMResolutionAgent – Generate AI-based remediation guidance.
 5. OpsLogAgent – Produce factual audit logs with no interpretation.
 6. LLMGovernanceAgent – Perform risk scoring, escalation, compliance.
-7. GovernanceInsightsAgent(LLM) – Analyze historical DB trends and patterns.
+7. LLMGovernanceInsightsAgent – Analyze historical DB trends and patterns.
 8. NotificationAgent – Send alerts via MCP (email, push, etc.).
 
 
@@ -48,13 +48,15 @@ Pipeline order:
 - Add compliance and SLA implications.
 - Output: `governance_result`.
 
-## GovernanceInsightsAgent (AI, NEW)
+## LLMGovernanceInsightsAgent
+ (AI, NEW)
 - Analyzes historical governance data stored in the DB.
 - Aggregation is performed by DB utility functions; the agent only interprets aggregated data.
 - Inputs: get_risk_trend(), get_compliance_trend(), get_escalation_text_counts(), get_recent_runs(),get_category_distribution(), get_severity_distribution()
 - Outputs JSON with: trend_summary, risk_trend, compliance_trend, recurring_issues, category_hotspots, recommendations, anomaly_detection.
 - Runs after GovernanceAgent and before NotificationAgent.
-- Persist GovernanceInsightsAgent output into insights_history ( ensure orchestrator writes insights_data + timestamp to DB)
+- Persist LLMGovernanceInsightsAgent
+ output into insights_history ( ensure orchestrator writes insights_data + timestamp to DB)
 
 ## Notifications
 - Use MCP tools to send notifications.
@@ -78,7 +80,8 @@ Pipeline order:
 # Data Flow
 
 `logs → MonitorAgent → LLMAlertSummaryAgent → TriageAgent → LLMResolutionAgent
-→ OpsLogAgent → LLMGovernanceAgent → GovernanceInsightsAgent → NotificationAgent`
+→ OpsLogAgent → LLMGovernanceAgent → LLMGovernanceInsightsAgent
+ → NotificationAgent`
 
 # Tasks
 
@@ -139,8 +142,10 @@ Pipeline order:
 
 ---
 
-## GovernanceInsightsAgent Tasks (Phase 2)
-- [x] Implement GovernanceInsightsAgent (LLM-based historical analysis)
+## LLMGovernanceInsightsAgent
+ Tasks (Phase 2)
+- [x] Implement LLMGovernanceInsightsAgent
+ (LLM-based historical analysis)
 - [x] Add orchestrator step after LLMGovernanceAgent
 - [x] Orchestrator must call new DB aggregation APIs and pass results to the agent
 
@@ -158,9 +163,10 @@ Pipeline order:
 - [ ] Add caching (@st.cache_data) for heavy DB reads to improve UI responsiveness.
 
 ## Testing Tasks
-- [ ] Update tests for all LLM agents (mocking OpenAIClient).
-- [ ] Full pipeline integration tests.
-- [ ] Tests ensuring OpsLogAgent has zero governance logic.
+- [ ] Review and update existing tests for all agents, ensuring mocks are correct, outdated expectations are fixed, and failing tests are resolved.
+- [ ] Run full integration test suite with coverage, identify gaps, and ensure all pipeline paths are fully tested.
+- [ ] Generate a consolidated verification report summarizing fixes, remaining issues, coverage results, and recommendations.
+
 
 # Acceptance Criteria
 
@@ -169,7 +175,8 @@ Pipeline order:
 - All LLM agents use JSON parser utilities.
 - Rotating logs saved to logs/pipeline.log.
 - GovernanceAgent outputs include risk, escalation, compliance.
-- GovernanceInsightsAgent produces historical insights using DB aggregation APIs.
+- LLMGovernanceInsightsAgent
+ produces historical insights using DB aggregation APIs.
 - NotificationAgent fires when escalation is required.
 - Streamlit UI fully operational.
 

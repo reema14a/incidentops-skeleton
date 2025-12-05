@@ -8,7 +8,8 @@ This module ensures strict sequential data flow across all agents:
 4. LLMResolutionAgent → resolution plans with LLM-generated recommendations and summary
 5. OpsLogAgent → audit summary (dict with status, count, timestamp)
 6. LLMGovernanceAgent → governance analysis (risk scoring, escalation, compliance)
-7. GovernanceInsightsAgent → historical insights (trend analysis, recommendations)
+7. LLMGovernanceInsightsAgent
+ → historical insights (trend analysis, recommendations)
 8. NotificationAgent → notification delivery status (sends alerts via MCP)
 
 Each stage validates input/output data structures to prevent invalid data flow.
@@ -52,7 +53,7 @@ class PipelineExecutor:
             'llm_resolution': LLMResolutionAgent("LLMResolutionAgent"),
             'opslog': OpsLogAgent("OpsLogAgent"),
             'governance': LLMGovernanceAgent("LLMGovernanceAgent"),
-            'insights': LLMGovernanceInsightsAgent("GovernanceInsightsAgent"),
+            'insights': LLMGovernanceInsightsAgent("LLMGovernanceInsightsAgent"),
             'notification': NotificationAgent("NotificationAgent")
         }
         self.execution_log = []
@@ -264,10 +265,12 @@ class PipelineExecutor:
     
     def _validate_insights_output(self, data: Any) -> Dict:
         """
-        Validate GovernanceInsightsAgent output structure.
+        Validate LLMGovernanceInsightsAgent
+ output structure.
         
         Args:
-            data: Output from GovernanceInsightsAgent
+            data: Output from LLMGovernanceInsightsAgent
+
             
         Returns:
             Dict: Validated output with governance_output and insights
@@ -276,15 +279,15 @@ class PipelineExecutor:
             ValueError: If data structure is invalid
         """
         if not isinstance(data, dict):
-            raise ValueError(f"GovernanceInsightsAgent must return a dict, got {type(data).__name__}")
+            raise ValueError(f"LLMGovernanceInsightsAgent must return a dict, got {type(data).__name__}")
         
         required_fields = ['governance_output', 'insights']
         missing_fields = [field for field in required_fields if field not in data]
         if missing_fields:
-            raise ValueError(f"GovernanceInsightsAgent output missing required fields: {missing_fields}")
+            raise ValueError(f"LLMGovernanceInsightsAgent output missing required fields: {missing_fields}")
         
         if not isinstance(data['insights'], dict):
-            raise ValueError(f"GovernanceInsightsAgent 'insights' must be a dict, got {type(data['insights']).__name__}")
+            raise ValueError(f"LLMGovernanceInsightsAgent 'insights' must be a dict, got {type(data['insights']).__name__}")
         
         return data
     
@@ -442,10 +445,10 @@ class PipelineExecutor:
                 logger.warning("Skipping governance writes - no valid run_id")
             
             # Stage 7: GovernanceInsights (depends on Governance output)
-            self._log_stage('GovernanceInsightsAgent', 'started')
+            self._log_stage('LLMGovernanceInsightsAgent', 'started')
             insights_output = self.agents['insights'].run(governance_output)
             insights_output = self._validate_insights_output(insights_output)
-            self._log_stage('GovernanceInsightsAgent', 'completed', 1)
+            self._log_stage('LLMGovernanceInsightsAgent', 'completed', 1)
             
             # Write insights_history after GovernanceInsights step
             if self.run_id:

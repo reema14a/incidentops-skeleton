@@ -96,25 +96,9 @@ ui/
 * Governance summary + compliance
 * Governance Page layout
 
-```
-Governance Page
- ├── Overview Tab  
- │     - Summary card (risk, escalation, compliance count)
- │     - Timestamp, run ID
- │     - Compact JSON expander
- │
- └── Historical Tab  (DB analytics)
-       - Governance history table
-       - Risk trend charts
-       - Escalation frequency charts
-       - Compliance trend charts
-       - Category distribution charts
-       - Severity distribution charts
-       - Per-run JSON expanders
-```
-### **Phase 5 — Deep Governance Insights Page (NEW)**
+### **Phase 5 — Incident Intelligence Page (NEW)**
 
-* A new standalone page displaying output from `GovernanceInsightsAgent`:
+* A new standalone page displaying output from `LLMGovernanceInsightsAgent`:
 
   * Trend Summary
   * Recurring Issues
@@ -124,22 +108,6 @@ Governance Page
   * Recommendations
   * Anomaly Detection
   * Raw JSON (expander)
-
-
-```
-Deep Governance Insights
- ├── Header (page title + timestamp + run_id)
- ├── Trend Summary
- ├── Patterns Section
- │     - Recurring Issues
- │     - Category Hotspots
- ├── Risk & Compliance
- │     - Risk Trend
- │     - Compliance Trend
- ├── Recommendations
- ├── Anomaly Detection
- └── Raw JSON expander
-```
 
   
 ### **Phase 6 — Notifications**
@@ -246,7 +214,7 @@ Deep Governance Insights
 * [x] Redesign Governance layout (Summary Card, Overview tab, Historical tab, collapsible history)
 
 ---
-## **Phase 5 — Deep Governance Insights**
+## **Phase 5 — Incident Intelligence**
 
 * [x] Create `ui/pages/Deep_Governance_Insights.py`
 * [x] Add DB-backed trend charts (risk, compliance, escalation)
@@ -267,23 +235,16 @@ Deep Governance Insights
 
 ---
 
-## **Phase 7 — Navigation Improvements**
+## **Phase 7 — UI Tests**
 
-- [ ] Set Dashboards as default landing page instead of Home
-- [ ] Convert Home page into Navigation Hub
-- [ ] Add navigation buttons from Pipeline Runner to Governance, Audit Logs, and Notifications
-
----
-
-## **Phase 8 — UI Tests**
-
-* [ ] Add UI tests for Pipeline Runner
-* [ ] Add UI tests for Audit Logs
-* [ ] Add UI tests for Dashboards
-* [ ] Add UI tests for Governance
-* [ ] Add UI tests for Notifications
-* [ ] Add mock pipeline fixture for testing
-* [ ] Ensure UI tests run independently (no real LLM calls)
+- [ ] Complete all sub-tasks for each page
+  - [ ] Add UI tests for Pipeline Runner
+  - [ ] Add UI tests for Audit Logs
+  - [ ] Add UI tests for Incident Intelligence
+  - [ ] Add UI tests for Governance
+  - [ ] Add UI tests for Notifications
+  - [ ] Add mock pipeline fixture for testing
+ Ensure UI tests run independently (no real LLM calls)
 
 ---
 

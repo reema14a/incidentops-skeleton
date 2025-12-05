@@ -1,8 +1,8 @@
-# Deep Governance Insights - DB-Backed Trend Charts Implementation
+# Incident Intelligence - DB-Backed Trend Charts Implementation
 
 ## Overview
 
-This document describes the implementation of optional DB-backed trend charts for the Deep Governance Insights page.
+This document describes the implementation of optional DB-backed trend charts for the Incident Intelligence page.
 
 ## Implementation Date
 
@@ -71,11 +71,12 @@ All tests pass successfully.
 ## User Experience
 
 ### Before
-- Deep Governance Insights page showed only the latest insights from GovernanceInsightsAgent
+- Incident Intelligence page showed only the latest insights from LLMGovernanceInsightsAgent
+
 - No historical trend visualization available
 
 ### After
-- Deep Governance Insights page now includes historical trend charts
+- Incident Intelligence page now includes historical trend charts
 - Users can visualize risk trends, compliance trends, and escalation frequency across all pipeline runs
 - Charts are optional and gracefully handle cases with no data
 - Detailed breakdowns available in expandable sections
@@ -83,7 +84,7 @@ All tests pass successfully.
 ## Technical Details
 
 ### Data Flow
-1. User navigates to Deep Governance Insights page
+1. User navigates to Incident Intelligence page
 2. Page retrieves latest insights from `insights_history` table
 3. Page also retrieves historical trend data from database:
    - Risk levels from `governance_analysis` table
@@ -120,4 +121,4 @@ Potential improvements for future iterations:
 
 ## Conclusion
 
-The DB-backed trend charts feature has been successfully implemented for the Deep Governance Insights page. The implementation follows the existing patterns from the Governance page, provides graceful handling of empty data, and includes comprehensive testing.
+The DB-backed trend charts feature has been successfully implemented for the Incident Intelligence page. The implementation follows the existing patterns from the Governance page, provides graceful handling of empty data, and includes comprehensive testing.

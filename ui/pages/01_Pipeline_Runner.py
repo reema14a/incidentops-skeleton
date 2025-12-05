@@ -17,6 +17,10 @@ project_root = Path(__file__).parent.parent.parent
 if str(project_root) not in sys.path:
     sys.path.insert(0, str(project_root))
 
+# Apply global theme
+from ui.theme_loader import apply_global_theme, close_sidebar_wrapper
+apply_global_theme()
+
 from orchestrator.orchestrator import run_pipeline
 
 
@@ -250,3 +254,6 @@ st.caption("ℹ️ Full historical governance and dashboards are available from 
 
 st.caption("📈 Powered by Kiro:  The pipeline orchestrates agents for comprehensive incident management.")
 
+
+# Close sidebar wrapper
+close_sidebar_wrapper()
